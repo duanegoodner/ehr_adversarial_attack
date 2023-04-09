@@ -1,9 +1,32 @@
 version: '3.8'
 
 services:
+
+  db:
+    build:
+      context: .
+      dockerfile: Dockerfile.postgres.mimiciii
+    environment:
+      - BUILD_MIMIC=${DB_BUILD_MIMIC_ON_RUN}
+      - POSTGRES_PASSWORD=${DB_POSTGRES_PASSWORD}
+      - MIMIC_PASSWORD=${DB_MIMIC_PASSWORD}
+    image: ${DB_IMAGE_NAME}
+    container_name: ${DB_CONTAINER_NAME}
+    volumes:
+      - ${DB_LOCAL_CSV_DIR}:${DB_CONTAINER_CSV_DIR}
+      - ${DB_LOCAL_DATA_DIR}:${DB_HOST_DATA_DIR}
+    ports:
+      - ${DB_HOST_PORT}:5432
+    init: true
+    stdin_open: true
+    tty: true
+
+
+
+
   aattack_ehrv:
-    env_file:
-      - .env
+    # env_file:
+    #   - .env
     image: ${IMAGE_NAME}
     deploy:
       resources:
