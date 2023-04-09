@@ -1,0 +1,24 @@
+name: null
+
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  - black
+  - isort
+  - matplotlib
+  - numpy
+  - pandas
+  - pip
+  - python=3.10.9
+  - python-dotenv
+  - scikit-learn
+  - setuptools
+  - spyder
+  - pip:
+    - git+https://github.com/duanegoodner/pygetfacl@0.0.5
+    - jupyter
+    - pyhealth
+    - torch
+    - torchvision
