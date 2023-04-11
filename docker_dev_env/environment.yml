@@ -6,16 +6,17 @@ channels:
 
 dependencies:
   - black
+  - gensimy
   - isort
   - matplotlib
   - numpy
   - pandas
   - pip
+  - progressbar2
   - python=3.10.9
   - python-dotenv
   - scikit-learn
   - setuptools
-  - spyder
   - pip:
     - git+https://github.com/duanegoodner/pygetfacl@0.0.5
     - jupyter
