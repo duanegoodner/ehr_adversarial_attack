@@ -24,9 +24,9 @@ services:
 
 
 
-  aattack_ehrv:
-    # env_file:
-    #   - .env
+  ehr_aa:
+    env_file:
+      - .env
     image: ${IMAGE_NAME}
     deploy:
       resources:

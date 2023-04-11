@@ -6,7 +6,7 @@ channels:
 
 dependencies:
   - black
-  - gensimy
+  - gensim
   - isort
   - matplotlib
   - numpy
