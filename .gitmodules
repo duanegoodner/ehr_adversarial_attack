@@ -1,3 +1,6 @@
 [submodule "urgent-care-comparative-fork"]
 	path = urgent-care-comparative-fork
 	url = https://github.com/duanegoodner/urgent-care-comparative-fork
+[submodule "mimic-code-fork"]
+	path = mimic-code-fork
+	url = https://github.com/duanegoodner/mimic-code-fork
