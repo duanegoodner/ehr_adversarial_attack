@@ -16,7 +16,8 @@ services:
       - BUILD_MIMIC=${BUILD_MIMIC}
     container_name: ${CONTAINER_NAME}
     volumes:
-      - ${LOCAL_CSV}:${CONTAINER_CSV}
+      - ${LOCAL_INPUT_CSV}:${CONTAINER_INPUT_CSV}
+      - ${LOCAL_OUTPUT_CSV}:${CONTAINER_OUTPUT_CSV}
       - ${LOCAL_DB}:${PGDATA}
     ports:
       - ${PG_HOST_PORT}:5432
