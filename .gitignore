@@ -1,7 +1,5 @@
 .idea/
 data/mimiciii_postgres/
 data/mimiciii_raw/
-data/local_mimic/
-data/preprocessing_input/
-data/preprocessing_output/
+data/preprocess_output/
 data/mimiciii_query_output/*.csv
