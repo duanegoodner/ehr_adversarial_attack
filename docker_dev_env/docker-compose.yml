@@ -6,6 +6,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.postgres.mimiciii
+
     environment:
       - BUILD_MIMIC=${DB_BUILD_MIMIC_ON_RUN}
       - POSTGRES_PASSWORD=${DB_POSTGRES_PASSWORD}

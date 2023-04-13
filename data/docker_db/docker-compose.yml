@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  mimic_db:
+    image: ${IMAGE_NAME}
+    build:
+      context: ../../
+      dockerfile: ./data/docker_db/Dockerfile
+      args:
+        - LOCAL_MIMICIII_BUILD_TOOLS=${LOCAL_MIMICIII_BUILD_TOOLS}
+        - POSTGRES_ENTRYPOINT=${POSTGRES_ENTRYPOINT}
+    environment:
+      - MIMIC_PASSWORD=${MIMIC_PASSWORD}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - PGDATA=${PGDATA}
+      - BUILD_MIMIC=${BUILD_MIMIC}
+    container_name: ${CONTAINER_NAME}
+    volumes:
+      - ${LOCAL_CSV}:${CONTAINER_CSV}
+      - ${LOCAL_DB}:${PGDATA}
+    ports:
+      - ${PG_HOST_PORT}:5432
+    init: true
+    stdin_open: true
+    tty: true
+
