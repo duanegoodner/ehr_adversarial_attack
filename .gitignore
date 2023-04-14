@@ -1,6 +1,9 @@
 .idea/
 data/mimiciii_postgres/
 data/mimiciii_raw/
-data/preprocess_output/
 data/mimiciii_query_output/*.csv
-data/tables_for_preprocess
+data/preprocess/tables
+data/preprocess/views
+data/preprocess/save
+data/preprocess/compressed_pickles
+
