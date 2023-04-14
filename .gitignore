@@ -5,5 +5,4 @@ data/mimiciii_query_output/*.csv
 data/preprocess/tables
 data/preprocess/views
 data/preprocess/save
-data/preprocess/compressed_pickles
 
