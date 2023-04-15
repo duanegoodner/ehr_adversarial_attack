@@ -5,4 +5,5 @@ data/mimiciii_query_output/*.csv
 data/preprocess/tables
 data/preprocess/views
 data/preprocess/save
+data/preprocess/current_full_result
 
