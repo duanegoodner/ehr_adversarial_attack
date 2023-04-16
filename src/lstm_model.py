@@ -46,6 +46,7 @@ class BinaryBidirectionalLSTM(nn.Module):
             bidirectional=True,
             batch_first=True,
         )
+        self.act_lstm = nn.ReLU()
         self.dropout = nn.Dropout(p=0.5)
         self.fc_1 = nn.Linear(
             in_features=2 * lstm_hidden_size, out_features=fc_hidden_size
@@ -65,7 +66,7 @@ class BinaryBidirectionalLSTM(nn.Module):
         h_0 = torch.zeros(2, x.size(0), self.lstm_hidden_size)
         c_0 = torch.zeros(2, x.size(0), self.lstm_hidden_size)
         lstm_out, (h_n, c_n) = self.lstm(x, (h_0, c_0))
-        lstm_out = nn.Tanh(lstm_out)
+        lstm_out = self.act_lstm(lstm_out)
         lstm_out = self.dropout(lstm_out)
         fc_1_out = self.fc_1(lstm_out[:, -1, :])
         fc_1_out = self.act_1(fc_1_out)
@@ -79,8 +80,8 @@ class BinaryBidirectionalLSTM(nn.Module):
             running_loss = 0.0
             for i, (x, y) in enumerate(train_loader):
                 self.optimizer.zero_grad()
-                y_hat = self(x)
-                loss = self.loss_fn(y_hat, y)
+                y_hat = self(x).squeeze()
+                loss = self.loss_fn(y_hat, y.float())
                 loss.backward()
                 self.optimizer.step()
                 running_loss += loss.item()
@@ -102,7 +103,9 @@ class BinaryBidirectionalLSTM(nn.Module):
             all_y_score = torch.cat((all_y_score, y_hat.to("cpu")), dim=0)
 
         metrics = get_classification_metrics(
-            y_score=all_y_score, y_pred=all_y_pred, y_true=all_y_true
+            y_score=all_y_score.detach().numpy(),
+            y_pred=all_y_pred.detach().numpy(),
+            y_true=all_y_true.detach().numpy(),
         )
 
         print(

@@ -17,8 +17,11 @@ class X19MortalityDataset(Dataset):
             x19_pickle: Path = pc.GOOD_PICKLE_DIR / pc.X19_PICKLE_FILENAME,
             y_pickle: Path = pc.GOOD_PICKLE_DIR / pc.Y_PICKLE_FILENAME
     ):
-        self.x19 = torch.tensor(get_pickle_data(x19_pickle))
-        # pickle file has many targets
+        orig_x19 = torch.from_numpy(get_pickle_data(x19_pickle)).float()
+        permuted_x19 = torch.permute(orig_x19, (0, 2, 1))
+        self.x19 = torch.tensor(permuted_x19)
+
+        # y pickle file has many targets per sample. we want mort (1st entry)
         all_y = get_pickle_data(y_pickle)
         self.mort = torch.tensor([icu_stay[0] for icu_stay in all_y])
 

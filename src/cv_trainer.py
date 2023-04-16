@@ -4,9 +4,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from lstm_model import BinaryBidirectionalLSTM
-from x19_mort_dataset import X19MortalityDataset
-
 
 class CrossValidationTrainer:
     def __init__(
