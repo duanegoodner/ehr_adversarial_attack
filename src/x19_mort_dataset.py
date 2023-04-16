@@ -1,3 +1,4 @@
+import numpy as np
 import pickle
 import torch
 from pathlib import Path
@@ -17,13 +18,26 @@ class X19MortalityDataset(Dataset):
             y_pickle: Path = pc.GOOD_PICKLE_DIR / pc.Y_PICKLE_FILENAME
     ):
         self.x19 = torch.tensor(get_pickle_data(x19_pickle))
-        self.all_y = get_pickle_data(y_pickle)
-        self.mort = torch.tensor([icu_stay[0] for icu_stay in self.all_y])
+        # pickle file has many targets
+        all_y = get_pickle_data(y_pickle)
+        self.mort = torch.tensor([icu_stay[0] for icu_stay in all_y])
 
     def __len__(self):
         return len(self.mort)
 
     def __getitem__(self, idx: int):
         return self.x19[idx, :, :], self.mort[idx]
+
+
+# class SubsetDataset(Dataset):
+#     def __init__(self, dataset: Dataset, indices: np.ndarray):
+#         self.dataset = dataset
+#         self.indices = indices
+#
+#     def __getitem__(self, idx):
+#         return self.dataset[self.indices[idx]]
+#
+#     def __len__(self):
+#         return len(self.indices)
 
 

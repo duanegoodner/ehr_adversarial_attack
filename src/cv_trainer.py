@@ -1,68 +1,115 @@
-import torch
-from torch.utils.data import DataLoader, WeightedRandomSampler
+from torch.utils.data import Subset, DataLoader, Dataset, WeightedRandomSampler
 from sklearn.model_selection import KFold
 import numpy as np
+import torch.nn as nn
 from lstm_model import BinaryBidirectionalLSTM
 from x19_mort_dataset import X19MortalityDataset
 
-# Create your dataset object and get the number of samples
-dataset = X19MortalityDataset()
-num_samples = len(dataset)
 
-model = BinaryBidirectionalLSTM(
-    input_size=48, lstm_hidden_size=128, fc_hidden_size=32
-)
+class CrossValidationTrainer:
+    def __init__(
+        self,
+        dataset: Dataset,
+        model: nn.Module,
+        num_folds: int,
+        batch_size: int,
+        epochs_per_fold: int,
+        global_epochs: int,
+    ):
+        self.dataset = dataset
+        self.model = model
+        self.num_folds = num_folds
+        self.batch_size = batch_size
+        self.fold_generator = KFold(
+            n_splits=self.num_folds, shuffle=True, random_state=42
+        )
+        self.epochs_per_fold = epochs_per_fold
+        self.global_epochs = global_epochs
 
-# Define your batch size
-batch_size = 128
+    @property
+    def full_dataset_labels(self) -> np.ndarray:
+        return np.array(
+            [
+                self.dataset[sample_idx][1]
+                for sample_idx in range(len(self.dataset))
+            ]
+        )
 
-# Define the number of folds for cross-validation
-num_folds = 5
+    def calc_label_sampling_weights(
+        self, train_indices: np.ndarray
+    ) -> np.ndarray:
+        train_labels = self.full_dataset_labels[train_indices]
+        np_unique_info = np.unique(train_labels, return_counts=True)
+        label_sampling_weights = 1 / np_unique_info[1]
+        return label_sampling_weights
 
-# Use KFold to create indices for each fold
-kf = KFold(n_splits=num_folds, shuffle=True, random_state=42)
+    def build_train_loader(self, train_indices: np.ndarray) -> DataLoader:
+        label_sampling_weights = self.calc_label_sampling_weights(
+            train_indices=train_indices
+        )
+        # train_labels = self.full_dataset_labels[train_indices]
+        train_labels = np.take(self.full_dataset_labels, train_indices)
+        # train_sampling_weights = np.take(
+        #     a=label_sampling_weights, indices=train_labels
+        # )
 
-for fold, (train_indices, validation_indices) in enumerate(
-    kf.split(range(num_samples))
-):
-    # Create samplers for the training and validation sets
-    # train_weights = np.zeros(num_samples)
-    labels = np.array([dataset[i][1].item() for i in range(num_samples)])
-    class_counts = np.bincount(labels)
-    num_minority = class_counts[1]
-    num_majority = class_counts[0]
-    train_weights = np.where(labels == 0, 1 / num_majority, 1 / num_minority)
-    # train_weights[labels == 0] = 1 / num_majority
-    # train_weights[labels == 1] = 1 / num_minority
-    train_sampler = WeightedRandomSampler(
-        train_weights[train_indices], len(train_indices), replacement=True
+        train_sampling_weights = np.array([0.05, 0.95])
+        train_sampler = WeightedRandomSampler(
+            weights=train_sampling_weights,
+            num_samples=len(train_indices),
+            replacement=True,
+        )
+        return DataLoader(
+            self.dataset,
+            batch_size=self.batch_size,
+            sampler=train_sampler,
+        )
+
+    def train_fold(self, train_indices: np.ndarray):
+        train_loader = self.build_train_loader(train_indices)
+        for batch_index, (features, labels) in enumerate(train_loader):
+            print("do some training")
+        # self.model.train_model(
+        #     train_loader=train_loader, num_epochs=self.epochs_per_fold
+        # )
+
+    def evaluate_fold(self, validation_indices: np.ndarray):
+        validation_dataset = Subset(
+            dataset=self.dataset, indices=validation_indices
+        )
+        validation_loader = DataLoader(
+            dataset=validation_dataset,
+            batch_size=self.batch_size,
+            shuffle=True,
+        )
+        for batch_index, (features, labels) in enumerate(validation_loader):
+            print("do some evaluation")
+        # self.model.evaluate_model(test_loader=validation_loader)
+
+    def run_cv_training(self):
+        for fold_idx, (train_indices, validation_indices) in enumerate(
+            self.fold_generator.split(range(len(self.dataset)))
+        ):
+            self.train_fold(train_indices=train_indices)
+            self.evaluate_fold(validation_indices=validation_indices)
+
+
+if __name__ == "__main__":
+    full_dataset = X19MortalityDataset()
+    subset_indices = np.random.randint(low=0, high=len(full_dataset), size=1000)
+    quick_check_dataset = Subset(
+        dataset=full_dataset, indices=subset_indices
     )
-    # validation_sampler = WeightedRandomSampler(
-    #     train_weights[validation_indices],
-    #     len(validation_indices),
-    #     replacement=True,
-    # )
 
-    # Create data loaders using the samplers
-    train_loader = DataLoader(
-        dataset, batch_size=batch_size, sampler=train_sampler
-    )
-    validation_loader = DataLoader(
-        dataset, batch_size=batch_size, shuffle=True
+    cv_trainer = CrossValidationTrainer(
+        dataset=quick_check_dataset,
+        model=BinaryBidirectionalLSTM(
+            input_size=48, lstm_hidden_size=128, fc_hidden_size=32
+        ),
+        num_folds=5,
+        batch_size=32,
+        epochs_per_fold=2,
+        global_epochs=1,
     )
 
-    # Train your model for this fold
-    model.train()
-    for batch_idx, (data, target) in enumerate(train_loader):
-        # Train your model with each batch
-        print(batch_idx)
-
-    # Evaluate your model on the validation set for this fold
-    model.eval()
-    for batch_idx, (data, target) in enumerate(validation_loader):
-        # Evaluate your model with each batch
-        pass
-
-    # Compute the accuracy or other metrics for this fold
-    accuracy = ...
-    print(f"Fold {fold}: Accuracy = {accuracy}")
+    cv_trainer.run_cv_training()

@@ -74,6 +74,7 @@ class BinaryBidirectionalLSTM(nn.Module):
         return out
 
     def train_model(self, train_loader: ud.DataLoader, num_epochs: int):
+        self.train()
         for epoch in range(num_epochs):
             running_loss = 0.0
             for i, (x, y) in enumerate(train_loader):
@@ -88,7 +89,6 @@ class BinaryBidirectionalLSTM(nn.Module):
                 % (epoch + 1, num_epochs, running_loss / (i + 1))
             )
 
-    @staticmethod
     def evaluate_model(self, test_loader: ud.DataLoader):
         self.eval()
         all_y_true = torch.LongTensor()
