@@ -30,6 +30,7 @@ def get_classification_metrics(
 class BinaryBidirectionalLSTM(nn.Module):
     def __init__(
         self,
+        device: torch.device,
         input_size: int,
         lstm_hidden_size: int,
         fc_hidden_size: int,
@@ -38,6 +39,7 @@ class BinaryBidirectionalLSTM(nn.Module):
         beta_2: float = 0.999,
     ):
         super(BinaryBidirectionalLSTM, self).__init__()
+        self.device = device
         self.input_size = input_size
         self.lstm_hidden_size = lstm_hidden_size
         self.lstm = nn.LSTM(
@@ -63,8 +65,8 @@ class BinaryBidirectionalLSTM(nn.Module):
         )
 
     def forward(self, x: torch.tensor):
-        h_0 = torch.zeros(2, x.size(0), self.lstm_hidden_size)
-        c_0 = torch.zeros(2, x.size(0), self.lstm_hidden_size)
+        h_0 = torch.zeros(2, x.size(0), self.lstm_hidden_size).to(self.device)
+        c_0 = torch.zeros(2, x.size(0), self.lstm_hidden_size).to(self.device)
         lstm_out, (h_n, c_n) = self.lstm(x, (h_0, c_0))
         lstm_out = self.act_lstm(lstm_out)
         lstm_out = self.dropout(lstm_out)
@@ -74,11 +76,17 @@ class BinaryBidirectionalLSTM(nn.Module):
         out = self.act_2(fc_2_out)
         return out
 
-    def train_model(self, train_loader: ud.DataLoader, num_epochs: int):
-        self.train()
+    def train_model(
+        self,
+        train_loader: ud.DataLoader,
+        num_epochs: int,
+    ):
+        self.train()  # should this be set here or by CrossValidator???
         for epoch in range(num_epochs):
             running_loss = 0.0
             for i, (x, y) in enumerate(train_loader):
+                y = y.float()
+                x, y = x.to(self.device), y.to(self.device)
                 self.optimizer.zero_grad()
                 y_hat = self(x).squeeze()
                 loss = self.loss_fn(y_hat, y.float())
@@ -96,6 +104,7 @@ class BinaryBidirectionalLSTM(nn.Module):
         all_y_pred = torch.LongTensor()
         all_y_score = torch.FloatTensor()
         for x, y in test_loader:
+            x, y = x.to(self.device), y.to(self.device)
             y_hat = self(x)
             y_pred = (y_hat >= 0.5).type(torch.long)
             all_y_true = torch.cat((all_y_true, y.to("cpu")), dim=0)

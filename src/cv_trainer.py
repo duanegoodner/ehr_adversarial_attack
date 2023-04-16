@@ -8,6 +8,7 @@ import torch.nn as nn
 class CrossValidationTrainer:
     def __init__(
         self,
+        device: torch.device,
         dataset: Dataset,
         model: nn.Module,  # consider more specific interface class
         num_folds: int,
@@ -15,6 +16,7 @@ class CrossValidationTrainer:
         epochs_per_fold: int,
         global_epochs: int,
     ):
+        self.device = device
         self.dataset = dataset
         self.model = model
         self.num_folds = num_folds
@@ -52,7 +54,8 @@ class CrossValidationTrainer:
         # for batch_idx, (data, target) in enumerate(train_dataloader):
         #     print(batch_idx)
         self.model.train_model(
-            train_loader=train_dataloader, num_epochs=self.epochs_per_fold
+            train_loader=train_dataloader,
+            num_epochs=self.epochs_per_fold
         )
 
     def evaluate_fold(self, validation_indices: np.ndarray):
@@ -76,6 +79,7 @@ class CrossValidationTrainer:
             self.evaluate_fold(validation_indices=validation_indices)
 
     def run(self):
+        self.model.to(self.device)
         for global_epoch in range(self.global_epochs):
             self.run_one_global_epoch()
 
