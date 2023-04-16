@@ -1,4 +1,5 @@
 import torch.cuda
+from torch.utils.data import DataLoader
 
 from cv_trainer import CrossValidationTrainer
 from lstm_model import BinaryBidirectionalLSTM
@@ -21,11 +22,15 @@ def main():
         num_folds=5,
         batch_size=128,
         epochs_per_fold=5,
-        global_epochs=3
+        global_epochs=3,
     )
     cv_trainer.run()
 
-    
+    final_eval_loader = DataLoader(
+        dataset=dataset, batch_size=128, shuffle=True
+    )
+
+    model.evaluate_model(test_loader=final_eval_loader)
 
 
 if __name__ == "__main__":
