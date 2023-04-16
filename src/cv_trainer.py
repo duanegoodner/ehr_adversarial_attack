@@ -1,7 +1,9 @@
 from torch.utils.data import Subset, DataLoader, Dataset, WeightedRandomSampler
 from sklearn.model_selection import KFold
 import numpy as np
+import torch
 import torch.nn as nn
+
 from lstm_model import BinaryBidirectionalLSTM
 from x19_mort_dataset import X19MortalityDataset
 
@@ -10,7 +12,7 @@ class CrossValidationTrainer:
     def __init__(
         self,
         dataset: Dataset,
-        model: nn.Module,
+        model: nn.Module,  # consider more specific interface class
         num_folds: int,
         batch_size: int,
         epochs_per_fold: int,
@@ -20,96 +22,75 @@ class CrossValidationTrainer:
         self.model = model
         self.num_folds = num_folds
         self.batch_size = batch_size
-        self.fold_generator = KFold(
-            n_splits=self.num_folds, shuffle=True, random_state=42
-        )
+        self.fold_generator = KFold(n_splits=num_folds, shuffle=True)
         self.epochs_per_fold = epochs_per_fold
         self.global_epochs = global_epochs
 
     @property
-    def full_dataset_labels(self) -> np.ndarray:
-        return np.array(
-            [
-                self.dataset[sample_idx][1]
-                for sample_idx in range(len(self.dataset))
-            ]
+    def dataset_size(self) -> int:
+        return len(self.dataset)
+
+    @staticmethod
+    def build_train_sampler(y_train: list[torch.tensor]):
+        class_sample_counts = np.unique(y_train, return_counts=True)[1]
+        weight = 1.0 / class_sample_counts
+        sample_weights = torch.from_numpy(
+            np.array([weight[t] for t in y_train])
         )
-
-    def calc_label_sampling_weights(
-        self, train_indices: np.ndarray
-    ) -> np.ndarray:
-        train_labels = self.full_dataset_labels[train_indices]
-        np_unique_info = np.unique(train_labels, return_counts=True)
-        label_sampling_weights = 1 / np_unique_info[1]
-        return label_sampling_weights
-
-    def build_train_loader(self, train_indices: np.ndarray) -> DataLoader:
-        label_sampling_weights = self.calc_label_sampling_weights(
-            train_indices=train_indices
-        )
-        # train_labels = self.full_dataset_labels[train_indices]
-        train_labels = np.take(self.full_dataset_labels, train_indices)
-        # train_sampling_weights = np.take(
-        #     a=label_sampling_weights, indices=train_labels
-        # )
-
-        train_sampling_weights = np.array([0.05, 0.95])
         train_sampler = WeightedRandomSampler(
-            weights=train_sampling_weights,
-            num_samples=len(train_indices),
-            replacement=True,
+            sample_weights.type("torch.DoubleTensor"), len(sample_weights)
         )
-        return DataLoader(
-            self.dataset,
+        return train_sampler
+
+    def train_fold(self, train_indices: np.ndarray):
+        train_split = Subset(dataset=self.dataset, indices=train_indices)
+        y_train = [self.dataset[i][1] for i in train_split.indices]
+        train_sampler = self.build_train_sampler(y_train=y_train)
+        train_dataloader = DataLoader(
+            dataset=train_split,
             batch_size=self.batch_size,
             sampler=train_sampler,
         )
-
-    def train_fold(self, train_indices: np.ndarray):
-        train_loader = self.build_train_loader(train_indices)
-        for batch_index, (features, labels) in enumerate(train_loader):
-            print("do some training")
-        # self.model.train_model(
-        #     train_loader=train_loader, num_epochs=self.epochs_per_fold
-        # )
+        # print("train model with this split")
+        # for batch_idx, (data, target) in enumerate(train_dataloader):
+        #     print(batch_idx)
+        self.model.train_model(
+            train_loader=train_dataloader, num_epochs=self.epochs_per_fold
+        )
 
     def evaluate_fold(self, validation_indices: np.ndarray):
-        validation_dataset = Subset(
+        validation_split = Subset(
             dataset=self.dataset, indices=validation_indices
         )
-        validation_loader = DataLoader(
-            dataset=validation_dataset,
-            batch_size=self.batch_size,
-            shuffle=True,
+        validation_dataloader = DataLoader(
+            dataset=validation_split, batch_size=self.batch_size, shuffle=True
         )
-        for batch_index, (features, labels) in enumerate(validation_loader):
-            print("do some evaluation")
-        # self.model.evaluate_model(test_loader=validation_loader)
+        # print("evaluate model with this split")
+        # for batch_idx, (data, target) in enumerate(validation_dataloader):
+        #     print(batch_idx)
+        self.model.evaluate_model(test_loader=validation_dataloader)
 
-    def run_cv_training(self):
+    def run_one_global_epoch(self):
         for fold_idx, (train_indices, validation_indices) in enumerate(
-            self.fold_generator.split(range(len(self.dataset)))
+            self.fold_generator.split(range(self.dataset_size))
         ):
-            self.train_fold(train_indices=train_indices)
+            for fold_epoch in range(self.epochs_per_fold):
+                self.train_fold(train_indices=train_indices)
             self.evaluate_fold(validation_indices=validation_indices)
 
+    def run(self):
+        for global_epoch in range(self.global_epochs):
+            self.run_one_global_epoch()
 
-if __name__ == "__main__":
-    full_dataset = X19MortalityDataset()
-    subset_indices = np.random.randint(low=0, high=len(full_dataset), size=1000)
-    quick_check_dataset = Subset(
-        dataset=full_dataset, indices=subset_indices
-    )
 
-    cv_trainer = CrossValidationTrainer(
-        dataset=quick_check_dataset,
-        model=BinaryBidirectionalLSTM(
-            input_size=48, lstm_hidden_size=128, fc_hidden_size=32
-        ),
-        num_folds=5,
-        batch_size=32,
-        epochs_per_fold=2,
-        global_epochs=1,
-    )
-
-    cv_trainer.run_cv_training()
+# if __name__ == "__main__":
+#     cv_trainer = CrossValidationTrainer(
+#         dataset=X19MortalityDataset(),
+#         model=BinaryBidirectionalLSTM(
+#             input_size=48, lstm_hidden_size=128, fc_hidden_size=32
+#         ),
+#         num_folds=5,
+#         batch_size=128,
+#         epochs_per_fold=2,
+#         global_epochs=1)
+#     cv_trainer.run()
