@@ -17,10 +17,11 @@ def get_classification_metrics(
     y_score: torch.FloatTensor,
     y_pred: torch.LongTensor,
     y_true: torch.LongTensor,
+    y_true_one_hot: torch.LongTensor,
 ) -> ClassificationMetrics:
     return ClassificationMetrics(
         accuracy=skm.accuracy_score(y_true=y_true, y_pred=y_pred),
-        roc_auc=skm.roc_auc_score(y_true=y_true, y_score=y_score),
+        roc_auc=skm.roc_auc_score(y_true=y_true_one_hot, y_score=y_score),
         precision=skm.precision_score(y_true=y_true, y_pred=y_pred),
         recall=skm.recall_score(y_true=y_true, y_pred=y_pred),
         f1=skm.f1_score(y_true=y_true, y_pred=y_pred),
@@ -48,16 +49,17 @@ class BinaryBidirectionalLSTM(nn.Module):
             bidirectional=True,
             batch_first=True,
         )
-        self.act_lstm = nn.ReLU()
+        self.act_lstm = nn.Tanh()
         self.dropout = nn.Dropout(p=0.5)
         self.fc_1 = nn.Linear(
             in_features=2 * lstm_hidden_size, out_features=fc_hidden_size
         )
         self.act_1 = nn.ReLU()
-        self.fc_2 = nn.Linear(in_features=fc_hidden_size, out_features=1)
-        self.act_2 = nn.Sigmoid()
+        self.fc_2 = nn.Linear(in_features=fc_hidden_size, out_features=2)
+        # self.act_2 = nn.Sigmoid()
+        self.act_2 = nn.Softmax(dim=1)
 
-        self.loss_fn = nn.BCELoss()
+        self.loss_fn = nn.CrossEntropyLoss()
         self.optimizer = torch.optim.Adam(
             params=self.parameters(),
             lr=learn_rate,
@@ -74,6 +76,7 @@ class BinaryBidirectionalLSTM(nn.Module):
         fc_1_out = self.act_1(fc_1_out)
         fc_2_out = self.fc_2(fc_1_out)
         out = self.act_2(fc_2_out)
+        # out = torch.softmax(fc_2_out, dim=1)
         return out
 
     def train_model(
@@ -85,11 +88,11 @@ class BinaryBidirectionalLSTM(nn.Module):
         for epoch in range(num_epochs):
             running_loss = 0.0
             for i, (x, y) in enumerate(train_loader):
-                y = y.float()
+                y = y.long()
                 x, y = x.to(self.device), y.to(self.device)
                 self.optimizer.zero_grad()
                 y_hat = self(x).squeeze()
-                loss = self.loss_fn(y_hat, y.float())
+                loss = self.loss_fn(y_hat, y)
                 loss.backward()
                 self.optimizer.step()
                 running_loss += loss.item()
@@ -106,7 +109,8 @@ class BinaryBidirectionalLSTM(nn.Module):
         for x, y in test_loader:
             x, y = x.to(self.device), y.to(self.device)
             y_hat = self(x)
-            y_pred = (y_hat >= 0.5).type(torch.long)
+            # y_pred = (y_hat >= 0.5).type(torch.long)
+            y_pred = torch.argmax(y_hat, dim=1)
             all_y_true = torch.cat((all_y_true, y.to("cpu")), dim=0)
             all_y_pred = torch.cat((all_y_pred, y_pred.to("cpu")), dim=0)
             all_y_score = torch.cat((all_y_score, y_hat.to("cpu")), dim=0)
@@ -115,6 +119,7 @@ class BinaryBidirectionalLSTM(nn.Module):
             y_score=all_y_score.detach().numpy(),
             y_pred=all_y_pred.detach().numpy(),
             y_true=all_y_true.detach().numpy(),
+            y_true_one_hot=torch.nn.functional.one_hot(all_y_true).detach().numpy()
         )
 
         print(
