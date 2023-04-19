@@ -31,7 +31,7 @@ def main():
         num_folds=5,
         batch_size=128,
         epochs_per_fold=5,
-        global_epochs=3,
+        global_epochs=8,
     )
     cv_trainer.run()
 
