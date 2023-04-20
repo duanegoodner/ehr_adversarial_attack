@@ -1,10 +1,6 @@
 import matplotlib.pyplot as plt
-import pickle
-import torch
-from pathlib import Path
-import numpy as np
+import matplotlib.ticker as ticker
 import seaborn as sns
-import project_config as pc
 
 
 from x19_mort_dataset import X19MortalityDataset
@@ -36,7 +32,7 @@ index_to_varname = {val: key for key, val in varname_to_index.items()}
 dataset = X19MortalityDataset()
 first_patient = dataset[0]
 
-fig, axes = plt.subplots(4, 1, sharex=True, sharey=True)
+fig, axes = plt.subplots(4, 1, sharex=True, sharey=False, figsize=(6, 6))
 cbar_ax = fig.add_axes([.92, .3, .02, .4])
 
 sns.heatmap(
@@ -70,9 +66,19 @@ sns.heatmap(
 
 fig.text(0.5, 0.02, "Time (hours)", ha="center")
 fig.text(0.04, 0.5, "Feature Index", va="center", rotation="vertical")
-for ax in axes:
-    ax.set_xticks(range(0, 48, 5))
-    ax.set_xticklabels([i for i in range(48) if i % 5 == 0])
+plt.subplots_adjust(right=0.8)
+
+for i, ax in enumerate(axes):
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(5))
+    ax.xaxis.set_major_formatter("{x:.0f}")
+    ax.xaxis.set_minor_locator(ticker.MultipleLocator(1))
+    ax.yaxis.set_major_locator(ticker.MultipleLocator(5))
+    ax.yaxis.set_major_formatter("{x:.0f}")
+    ax.yaxis.set_minor_locator(ticker.MultipleLocator(1))
+    ax2 = ax.twinx()
+    ax2.tick_params(axis='y', length=0, labelsize=0, labelcolor='white')
+    ax2.set_ylabel("M = ?", rotation=0, labelpad=15)
+
 
 plt.show()
 
