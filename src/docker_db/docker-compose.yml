@@ -4,8 +4,8 @@ services:
   mimic_db:
     image: ${IMAGE_NAME}
     build:
-      context: ../..
-      dockerfile: Dockerfile
+      context: ../../
+      dockerfile: ./src/docker_db/Dockerfile
       args:
         - LOCAL_MIMICIII_BUILD_TOOLS=${LOCAL_MIMICIII_BUILD_TOOLS}
         - POSTGRES_ENTRYPOINT=${POSTGRES_ENTRYPOINT}
