@@ -1,6 +1,6 @@
 .idea/
 data/mimiciii_postgres/
-data/mimic_query_results
+data/mimic_query_results/*.csv
 data/mimiciii_raw/
 data/mimiciii_query_output/*.csv
 data/preprocess/tables
