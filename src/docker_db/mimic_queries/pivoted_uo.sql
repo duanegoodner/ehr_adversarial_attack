@@ -1,3 +1,4 @@
+copy (
 select
   icustay_id
   , charttime
@@ -51,4 +52,5 @@ where (oe.iserror IS NULL OR oe.iserror != 1)
   )
 ) as h
 group by icustay_id, charttime
-order by icustay_id, charttime;
+order by icustay_id, charttime
+) to '/mimic_query_results/pivoted_uo.csv' with delimiter ',' csv header;

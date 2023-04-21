@@ -22,6 +22,7 @@
 --    For sedated patients, the Glasgow Coma Score before sedation was used.
 --    This was ascertained either from interviewing the physician who ordered the sedation,
 --    or by reviewing the patient's medical record.
+copy (
 with
   base as (
     select
@@ -175,4 +176,5 @@ where
   rn = 1
 ORDER BY
   icustay_id,
-  charttime;
+  charttime
+) to '/mimic_query_results/pivoted_gc.csv' with delimiter ',' csv header;

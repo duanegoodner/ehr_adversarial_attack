@@ -16,10 +16,12 @@ dependencies:
   - python=3.10.9
   - python-dotenv
   - scikit-learn
+  - seaborn
   - setuptools
   - pip:
     - git+https://github.com/duanegoodner/pygetfacl@0.0.5
     - jupyter
     - pyhealth
+    - tensorboard
     - torch
     - torchvision
