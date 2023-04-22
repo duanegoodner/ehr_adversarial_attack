@@ -69,8 +69,23 @@ class Preprocessor:
         filtered_diagnoses_icd = self._initial_filter.get_filtered_df(
             "diagnoses_icd"
         )
+        filtered_d_icd_diagnoses = self._initial_filter.get_filtered_df(
+            "d_icd_diagnoses"
+        )
         top_diagnoses_codes = tdc.TopDiagnosesCalculator(
             filtered_icustay_detail=filtered_icustay_detail,
             filtered_diagnoses_icd=filtered_diagnoses_icd,
             top_n=self._preprocess_settings.num_diagnoses
-        )
+        ).labelled_top_n_codes()
+
+        return pd.merge(
+            left=top_diagnoses_codes,
+            right=filtered_d_icd_diagnoses,
+            on="icd9_code",
+            how="inner",
+        )[["icd9_code", "num_occurrences", "short_title"]]
+
+
+if __name__ == "__main__":
+    p = Preprocessor()
+    result = p.run()

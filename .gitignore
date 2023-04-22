@@ -1,3 +1,7 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
 .idea/
 data/mimiciii_postgres/
 data/mimiciii_query_results/*.csv
