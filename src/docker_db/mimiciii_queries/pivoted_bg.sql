@@ -326,4 +326,4 @@ copy (
     and grp.charttime < iid.data_end
   order by grp.hadm_id,
     grp.charttime
-) to '/mimic_query_results/pivoted_bg.csv' with delimiter ',' csv header;
+) to '/mimiciii_query_results/pivoted_bg.csv' with delimiter ',' csv header;

@@ -177,4 +177,4 @@ where
 ORDER BY
   icustay_id,
   charttime
-) to '/mimic_query_results/pivoted_gc.csv' with delimiter ',' csv header;
+) to '/mimiciii_query_results/pivoted_gc.csv' with delimiter ',' csv header;

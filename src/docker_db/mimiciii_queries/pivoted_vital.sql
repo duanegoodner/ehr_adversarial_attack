@@ -185,4 +185,4 @@ copy (
     ce.charttime
   order by ce.icustay_id,
     ce.charttime
-) to '/mimic_query_results/pivoted_vital.csv' with delimiter ',' csv header;
+) to '/mimiciii_query_results/pivoted_vital.csv' with delimiter ',' csv header;

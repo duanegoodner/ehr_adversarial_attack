@@ -9,8 +9,8 @@ class DataExtractor:
         self,
         # project_root: Path = Path(__file__).parent.parent.parent,
         # dot_env_rel_root: Path = Path("data/docker_db/.env"),
-        queries_dir: Path = Path("/mimic_queries"),
-        output_dir: Path = Path("/mimic_query_results"),
+        queries_dir: Path = Path("/mimiciii_queries"),
+        output_dir: Path = Path("/mimiciii_query_results"),
     ):
         # self.project_root = project_root
         # self.dot_env = project_root / dot_env_rel_root

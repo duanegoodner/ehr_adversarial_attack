@@ -2,7 +2,7 @@
 
 source .env
 docker compose up -d
-docker exec -it mimic_db /mimic_queries/run_queries_container.sh
+docker exec -it mimic_db "$CONTAINER_SQL_DIR"/run_queries_container.sh
 docker compose down
 sudo chown -R "$USER":"$USER" "$LOCAL_OUTPUT_CSV" "$LOCAL_DB"
 

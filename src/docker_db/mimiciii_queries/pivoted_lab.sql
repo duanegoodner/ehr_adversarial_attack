@@ -368,4 +368,4 @@ left join iid_assign iid
 order by
 	le_avg.subject_id,
 	le_avg.charttime
-) to '/mimic_query_results/pivoted_lab.csv' with delimiter ',' csv header;;
+) to '/mimiciii_query_results/pivoted_lab.csv' with delimiter ',' csv header;;
