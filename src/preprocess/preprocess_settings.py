@@ -1,8 +1,16 @@
+from dataclasses import dataclass
 from pathlib import Path
 from typing import NamedTuple
 
 
 class InitialFilterSettings(NamedTuple):
+    min_age: int
+    min_los_hosp: int
+    min_los_icu: int
+
+
+@dataclass
+class PrefilterSettings:
     min_age: int
     min_los_hosp: int
     min_los_icu: int

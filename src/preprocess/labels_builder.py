@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-import dataframe_provider as dfp
+import data_io as dfp
 
 
 class LabelsBuilder:
