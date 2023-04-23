@@ -1,3 +1,4 @@
+import copy
 import pandas as pd
 import pickle
 from abc import ABC, abstractmethod
@@ -16,7 +17,7 @@ class PreprocessModuleInputSource(ABC):
         self.label = label
 
     @abstractmethod
-    def import_object(self) -> PreprocessModuleInputObject:
+    def import_object(self) -> object:
         pass
 
 
@@ -26,12 +27,10 @@ class CSVFileForDataframe(PreprocessModuleInputSource):
         super().__init__(label=label)
         self._csv_path = csv_path
 
-    def import_object(self) -> PreprocessModuleInputObject:
+    def import_object(self) -> pd.DataFrame:
         df = pd.read_csv(filepath_or_buffer=self._csv_path)
         df.columns = [name.lower() for name in df.columns]
-        return PreprocessModuleInputObject(
-            object=df, label=self.label
-        )
+        return df
 
 
 class PickleFile(PreprocessModuleInputSource):
@@ -40,23 +39,23 @@ class PickleFile(PreprocessModuleInputSource):
         super().__init__(label=label)
         self._pickle_path = pickle_path
 
-    def import_object(self) -> PreprocessModuleInputObject:
+    def import_object(self) -> object:
         with self._pickle_path.open(mode="rb") as pickle_file:
             imported_pickle = pickle.load(pickle_file)
-        return PreprocessModuleInputObject(
-            object=imported_pickle, label=self.label
-        )
+        return imported_pickle
+
+
+class ExistingObject(PreprocessModuleInputSource):
+    def __init__(self, existing_object: object, label: str):
+        super().__init__(label=label)
+        self._existing_object = existing_object
+
+    def import_object(self) -> object:
+        return copy.deepcopy(self._existing_object)
 
 
 class PreprocessModule(ABC):
     def __init__(self, raw_inputs: list[PreprocessModuleInputSource]):
-        self._raw_inputs = raw_inputs
-
-    @property
-    @abstractmethod
-    def raw_inputs(self) -> list[PreprocessModuleInputSource]:
-        pass
-
-    @abstractmethod
-    def prefilter(self):
-
+        self._input_objects = {
+            item.label: item.import_object() for item in raw_inputs
+        }
