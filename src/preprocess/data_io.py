@@ -33,6 +33,30 @@ class QueryResultImporter:
         return pd.read_csv(self._query_results_dir / filename)
 
 
+class DataExporter:
+    def __init__(self, output_dir: Path):
+        self._output_dir = output_dir
+
+    def export_pickle(self, item: object, pickle_name: str) -> Path:
+        pickle_file_path = self._output_dir / f"{pickle_name}.pickle"
+        # assert not pickle_file_path.exists()
+        with pickle_file_path.open(mode="wb") as p:
+            pickle.dump(obj=item, file=p)
+        return pickle_file_path
+
+
+class PickleImporter:
+    def __init__(self, pickle_path: Path):
+        self._pickle_path = pickle_path
+
+    # use different method depending on imported object
+    # (just for type hinting benefit)
+    def import_pickle_to_df(self) -> pd.DataFrame:
+        with self._pickle_path.open(mode="rb") as p:
+            return pickle.load(p)
+
+
+
 class DataIO:
     def __init__(
             self,

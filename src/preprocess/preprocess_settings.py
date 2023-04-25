@@ -1,87 +1,54 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import NamedTuple
+import interface_data_structs as ids
+import interface_prefilter as ip
+import preprocess_resource as ppr
+import preprocess_module as ppm
 
 
-class InitialFilterSettings(NamedTuple):
-    min_age: int
-    min_los_hosp: int
-    min_los_icu: int
-
-
-@dataclass
-class PrefilterSettings:
-    min_age: int
-    min_los_hosp: int
-    min_los_icu: int
+class PrefilterResources:
+    def __init__(self, ):
 
 
 class PreprocessSettings:
     def __init__(
-        self,
-        project_root: Path,
-        query_result_format: str = ".csv",
-        query_names: tuple[str] = (
-            "admissions",
-            "d_icd_diagnoses",
-            "diagnoses_icd",
-            "icustay_detail",
-            "pivoted_bg",
-            "pivoted_gc",
-            "pivoted_lab",
-            "pivoted_uo",
-            "pivoted_vital",
-        ),
-        initial_filter_settings: InitialFilterSettings = InitialFilterSettings(
-            min_age=18, min_los_hosp=1, min_los_icu=1
-        ),
-        num_diagnoses: int = 25
+            self,
+            project_root: Path,
+            min_age: int = 18,
+            min_los_hospital: int = 1,
+            min_los_icu: int = 1,
+            num_diagnoses: int = 25,
+            sql_result_relpath: Path = Path("data/mimiciii_query_results"),
+            prefilter_output_relpath: Path = Path("/data/prefilter_output"),
     ):
-        self._project_root = project_root
-        self.validate_data_dirs()
-        self._query_result_format = query_result_format
-        self._query_names = query_names
-        self._initial_filter_settings = initial_filter_settings
-        self._num_diagnoses = num_diagnoses
+        self.project_root = project_root
+        self.min_age = min_age
+        self.min_los_hospital = min_los_hospital
+        self.min_los_icu = min_los_icu
+        self.num_diagnoses = num_diagnoses
+        self.sql_result_dir = project_root / sql_result_relpath
+        self.prefilter_output_dir = project_root / prefilter_output_relpath
 
     @property
-    def _project_data(self) -> Path:
-        return self._project_root / "data"
+    def icustay_detail_csv(self) -> Path:
+        return self.mimiciii_query_results_dir / "icustay_detail.csv"
 
     @property
-    def query_names(self) -> tuple[str]:
-        return self._query_names
+    def diagnoses_icd_csv(self) -> Path:
+        return self.mimiciii_query_results_dir / "diagnoses_icd.csv"
 
     @property
-    def query_result_format(self) -> str:
-        return self._query_result_format
+    def d_icd_diagnoses_csv(self) -> Path:
+        return self.mimiciii_query_results_dir / "d_icd_diagnoses.csv"
 
     @property
-    def initial_filter_settings(self):
-        return self._initial_filter_settings
-
-    @property
-    def mimiciii_query_results(self):
-        return self._project_data / "mimiciii_query_results"
-
-    @property
-    def preprocessed_output(self):
-        return self._project_data / "preprocessed_data"
-
-    @property
-    def num_diagnoses(self) -> int:
-        return self._num_diagnoses
-
-    def validate_data_dirs(self):
-        assert self._project_root.is_dir()
-        assert self._project_data.is_dir()
-        assert self.mimiciii_query_results.is_dir()
-        assert (
-            self.preprocessed_output.is_dir()
-            or not self.preprocessed_output.exists()
+    def prefilter_settings(self) -> ip.PrefilterSettings:
+        return ip.PrefilterSettings(
+            min_age=self.min_age,
+            min_los_hospital=self.min_los_hospital,
+            min_los_icu=self.min_los_icu,
+            output_dir=self.prefilter_output_dir
         )
-        if not self.preprocessed_output.exists():
-            self.preprocessed_output.mkdir()
 
 
 DEFAULT_SETTINGS = PreprocessSettings(

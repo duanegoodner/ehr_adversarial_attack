@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-import preprocess_module as pm
+import preprocess_module_old as pm
 
 
 class TopDiagnosesCalculator(pm.PreprocessModule):

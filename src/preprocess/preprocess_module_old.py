@@ -6,14 +6,25 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
+@dataclass
+class PreprocessModuleInputObject:
+    object: object
+    label: str
+
+
 class PreprocessModuleInputSource(ABC):
+    def __init__(self, label: str):
+        self.label = label
+
     @abstractmethod
     def import_object(self) -> object:
         pass
 
 
 class CSVFileForDataframe(PreprocessModuleInputSource):
-    def __init__(self, csv_path: Path):
+
+    def __init__(self, csv_path: Path, label: str):
+        super().__init__(label=label)
         self._csv_path = csv_path
 
     def import_object(self) -> pd.DataFrame:
@@ -23,7 +34,9 @@ class CSVFileForDataframe(PreprocessModuleInputSource):
 
 
 class PickleFile(PreprocessModuleInputSource):
-    def __init__(self, pickle_path: Path):
+
+    def __init__(self, pickle_path: Path, label: str):
+        super().__init__(label=label)
         self._pickle_path = pickle_path
 
     def import_object(self) -> object:
@@ -33,14 +46,16 @@ class PickleFile(PreprocessModuleInputSource):
 
 
 class ExistingObject(PreprocessModuleInputSource):
-    def __init__(self, existing_object: object):
+    def __init__(self, existing_object: object, label: str):
+        super().__init__(label=label)
         self._existing_object = existing_object
 
     def import_object(self) -> object:
         return copy.deepcopy(self._existing_object)
 
 
-@dataclass
-class PreprocessModuleOutputItem:
-    name: str
-    reference: Path | object
+class PreprocessModule(ABC):
+    def __init__(self, raw_inputs: list[PreprocessModuleInputSource]):
+        self._input_objects = {
+            item.label: item.import_object() for item in raw_inputs
+        }
