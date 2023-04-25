@@ -7,7 +7,7 @@ class PreprocessModule(ABC):
     def __init__(
         self,
         settings: dataclass,
-        incoming_resources: dict[str, pr.PreprocessResource],
+        incoming_resources: dict[str, pr.IncomingPreprocessResource],
         exported_resources: dict[str, pr.ExportedPreprocessResource] = None,
     ):
         self._settings = settings
@@ -22,12 +22,12 @@ class PreprocessModule(ABC):
         self._process()
         return self._exported_resources
 
-    def _export_resource(self, key: str, resource: pr.PreprocessResource):
-        assert resource.py_object is not None
-        assert resource.export_path is not None
-        exported_resource = resource.export_py_object()
+    def _export_resource(
+        self, key: str, resource: pr.OutgoingPreprocessResource
+    ):
+        exported_resource = resource.export()
         self._exported_resources[key] = exported_resource
 
     @abstractmethod
-    def _process(self):
+    def process(self):
         pass

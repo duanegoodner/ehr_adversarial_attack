@@ -63,8 +63,8 @@ class OutgoingPreprocessResource:
 
     def __init__(
         self,
-        outgoing_object: object = None,
-        export_path: Path = None,
+        outgoing_object: object,
+        export_path: Path,
     ):
         self._outgoing_object = outgoing_object
         self._export_path = export_path
@@ -73,6 +73,10 @@ class OutgoingPreprocessResource:
     @property
     def export_path(self) -> Path:
         return self._export_path
+
+    @property
+    def outgoing_object(self) -> object:
+        return self._outgoing_object
 
     def _validate_export_path(self):
         assert self._export_path.name.endswith(
