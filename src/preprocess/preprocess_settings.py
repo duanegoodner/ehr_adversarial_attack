@@ -4,13 +4,29 @@ import interface_data_structs as ids
 import interface_prefilter as ip
 import preprocess_resource as ppr
 import preprocess_module as ppm
-
-
-class PrefilterResources:
-    def __init__(self, ):
+import prefilter_input_classes as pfin
 
 
 class PreprocessSettings:
+    def __init__(self, project_root: Path):
+        self._project_root = project_root
+        self._data_dir = project_root / "data"
+        self._sql_output_dir = self._data_dir / "mimiciii_query_results"
+        self._prefilter_settings = pfin.PrefilterSettings(
+            output_dir=self._data_dir / "prefilter_output",
+            min_age=18,
+            min_los_hospital=1,
+            min_los_icu=1
+        ),
+        self._prefilter_resource_refs = pfin.PrefilterResourceRefs(
+            d_icd_diagnoses=self._sql_output_dir / "d_icd_diagnoses.csv",
+            diagnoses_icd=self._sql_output_dir / "diagnoses_icd.csv",
+            icustay_detail=self._sql_output_dir / "icustay_detail.csv"
+        )
+
+
+
+class PreprocessSettingsOld:
     def __init__(
             self,
             project_root: Path,

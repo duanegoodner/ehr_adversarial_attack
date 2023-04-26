@@ -10,8 +10,7 @@ class PreprocessModule(ABC):
     def __init__(
         self,
         settings: dataclass,
-        incoming_resources: dataclass,
-        imported_container_constructor: Callable[..., dataclass],
+        incoming_resource_refs: dataclass,
         importer: rio.ResourceImporter = rio.ResourceImporter(),
         exporter: rio.ResourceExporter = rio.ResourceExporter(),
         exported_resources: dict[str, pr.ExportedPreprocessResource] = None,
@@ -19,23 +18,24 @@ class PreprocessModule(ABC):
         self._settings = settings
         self._importer = importer
         self._exporter = exporter
-        self._imported_container_constructor = imported_container_constructor
-        if incoming_resources is None:
-            incoming_resources = {}
-        self._incoming_resources = incoming_resources
+        if incoming_resource_refs is None:
+            incoming_resource_refs = {}
+        self._incoming_resource_refs = incoming_resource_refs
         if exported_resources is None:
             exported_resources = {}
         self._exported_resources = exported_resources
 
     # TODO add ability to only import certain resource refs instead of all?
-    def _import_resources(self) -> dataclass:
-        resource_container = self._imported_container_constructor(
-            **self._incoming_resources.__dict__
+    def _import_resources(
+        self, imported_container_constructor: Callable[..., dataclass]
+    ) -> dataclass:
+        resource_container = imported_container_constructor(
+            **self._incoming_resource_refs.__dict__
         )
-        assert sorted(self._incoming_resources.__dict__.keys()) == sorted(
+        assert sorted(self._incoming_resource_refs.__dict__.keys()) == sorted(
             resource_container.__dict__.keys()
         )
-        for key, resource_ref in self._incoming_resources.__dict__.items():
+        for key, resource_ref in self._incoming_resource_refs.__dict__.items():
             setattr(
                 resource_container,
                 key,

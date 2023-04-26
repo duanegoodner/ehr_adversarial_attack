@@ -5,7 +5,7 @@ import preprocess_module as pm
 
 
 @dataclass
-class PrefilterResources:
+class PrefilterResourceRefs:
     # admissions: pr.PreprocessResource
     d_icd_diagnoses: Path
     diagnoses_icd: Path
@@ -18,7 +18,7 @@ class PrefilterResources:
 
 
 @dataclass
-class ImportedPrefilterResources:
+class PrefilterResources:
     d_icd_diagnoses: pd.DataFrame
     diagnoses_icd: pd.DataFrame
     icustay_detail: pd.DataFrame
@@ -36,17 +36,16 @@ class Prefilter(pm.PreprocessModule):
     def __init__(
         self,
         settings: PrefilterSettings,
-        incoming_resources: PrefilterResources,
+        incoming_resource_refs: PrefilterResourceRefs,
     ):
         super().__init__(
             settings=settings,
-            incoming_resources=incoming_resources,
-            imported_container_constructor=ImportedPrefilterResources,
+            incoming_resource_refs=incoming_resource_refs,
         )
 
     @staticmethod
     def _apply_standard_df_formatting(
-        imported_resources: ImportedPrefilterResources,
+        imported_resources: PrefilterResources,
     ):
         for resource in imported_resources.__dict__.values():
             if isinstance(resource, pd.DataFrame):
@@ -74,9 +73,14 @@ class Prefilter(pm.PreprocessModule):
         return filtered_diagnoses_icd
 
     def process(self):
-        # TODO change from ABC class method to explicitly importing here for
-        #  IDE type assist benefit
-        imported_resources = self._import_resources()
+        # Could make constructor a data member for more abstraction, but
+        # then don't get as much IDE auto-complete help
+        imported_resources = PrefilterResources(
+            **{
+                key: self._importer.import_resource(val)
+                for key, val in self._incoming_resource_refs.__dict__.items()
+            }
+        )
         self._apply_standard_df_formatting(
             imported_resources=imported_resources
         )
@@ -100,7 +104,7 @@ if __name__ == "__main__":
     project_root = Path(__file__).parent.parent.parent
     data_dir = project_root / "data"
     sql_result_dir = data_dir / "mimiciii_query_results"
-    prefilter_resources = PrefilterResources(
+    prefilter_resources = PrefilterResourceRefs(
         d_icd_diagnoses=sql_result_dir / "d_icd_diagnoses.csv",
         diagnoses_icd=sql_result_dir / "diagnoses_icd.csv",
         icustay_detail=sql_result_dir / "icustay_detail.csv",
@@ -109,11 +113,6 @@ if __name__ == "__main__":
         output_dir=data_dir / "prefilter_output"
     )
     prefilter = Prefilter(
-        settings=prefilter_settings, incoming_resources=prefilter_resources
+        settings=prefilter_settings, incoming_resource_refs=prefilter_resources
     )
-    prefilter()
-
-    
-
-
-
+    exported_resources = prefilter()
