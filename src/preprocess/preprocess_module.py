@@ -11,6 +11,7 @@ class PreprocessModule(ABC):
         self,
         settings: dataclass,
         incoming_resource_refs: dataclass,
+        resource_container_constructor: Callable[..., dataclass],
         importer: rio.ResourceImporter = rio.ResourceImporter(),
         exporter: rio.ResourceExporter = rio.ResourceExporter(),
         exported_resources: dict[str, pr.ExportedPreprocessResource] = None,
@@ -18,18 +19,15 @@ class PreprocessModule(ABC):
         self._settings = settings
         self._importer = importer
         self._exporter = exporter
-        if incoming_resource_refs is None:
-            incoming_resource_refs = {}
+        self._resource_container_constructor = resource_container_constructor
         self._incoming_resource_refs = incoming_resource_refs
         if exported_resources is None:
             exported_resources = {}
         self._exported_resources = exported_resources
 
-    # TODO add ability to only import certain resource refs instead of all?
-    def _import_resources(
-        self, imported_container_constructor: Callable[..., dataclass]
-    ) -> dataclass:
-        resource_container = imported_container_constructor(
+    # TODO Add ability to only import certain resource refs instead of all?
+    def _import_resources(self) -> dataclass:
+        resource_container = self._resource_container_constructor(
             **self._incoming_resource_refs.__dict__
         )
         assert sorted(self._incoming_resource_refs.__dict__.keys()) == sorted(

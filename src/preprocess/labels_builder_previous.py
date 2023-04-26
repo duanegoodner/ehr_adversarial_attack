@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from pathlib import Path
 import inerface_labels_builder as ilb
 import numpy as np

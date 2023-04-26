@@ -1,9 +1,5 @@
-from dataclasses import dataclass
 from pathlib import Path
-import interface_data_structs as ids
-import interface_prefilter as ip
-import preprocess_resource as ppr
-import preprocess_module as ppm
+import labels_builder_input_classes as lbin
 import prefilter_input_classes as pfin
 
 
@@ -16,57 +12,43 @@ class PreprocessSettings:
             output_dir=self._data_dir / "prefilter_output",
             min_age=18,
             min_los_hospital=1,
-            min_los_icu=1
-        ),
+            min_los_icu=1,
+        )
         self._prefilter_resource_refs = pfin.PrefilterResourceRefs(
             d_icd_diagnoses=self._sql_output_dir / "d_icd_diagnoses.csv",
             diagnoses_icd=self._sql_output_dir / "diagnoses_icd.csv",
-            icustay_detail=self._sql_output_dir / "icustay_detail.csv"
+            icustay_detail=self._sql_output_dir / "icustay_detail.csv",
+        )
+        self._labels_builder_settings = lbin.LabelsBuilderSettings(
+            output_dir=self._data_dir / "labels_builder_output",
+            num_diagnoses=25,
+        )
+        self._labels_builder_resource_refs = lbin.LabelsBuilderResourceRefs(
+            d_icd_diagnoses=self._data_dir
+            / "prefilter_output"
+            / "d_icd_diagnoses.pickle",
+            diagnoses_icd=self._data_dir
+            / "prefilter_output"
+            / "diagnoses_icd.pickle",
         )
 
-
-
-class PreprocessSettingsOld:
-    def __init__(
-            self,
-            project_root: Path,
-            min_age: int = 18,
-            min_los_hospital: int = 1,
-            min_los_icu: int = 1,
-            num_diagnoses: int = 25,
-            sql_result_relpath: Path = Path("data/mimiciii_query_results"),
-            prefilter_output_relpath: Path = Path("/data/prefilter_output"),
-    ):
-        self.project_root = project_root
-        self.min_age = min_age
-        self.min_los_hospital = min_los_hospital
-        self.min_los_icu = min_los_icu
-        self.num_diagnoses = num_diagnoses
-        self.sql_result_dir = project_root / sql_result_relpath
-        self.prefilter_output_dir = project_root / prefilter_output_relpath
+    @property
+    def prefilter_settings(self) -> pfin.PrefilterSettings:
+        return self._prefilter_settings
 
     @property
-    def icustay_detail_csv(self) -> Path:
-        return self.mimiciii_query_results_dir / "icustay_detail.csv"
+    def prefilter_resource_refs(self) -> pfin.PrefilterResourceRefs:
+        return self._prefilter_resource_refs
 
     @property
-    def diagnoses_icd_csv(self) -> Path:
-        return self.mimiciii_query_results_dir / "diagnoses_icd.csv"
+    def labels_builder_settings(self) -> lbin.LabelsBuilderSettings:
+        return self._labels_builder_settings
 
     @property
-    def d_icd_diagnoses_csv(self) -> Path:
-        return self.mimiciii_query_results_dir / "d_icd_diagnoses.csv"
-
-    @property
-    def prefilter_settings(self) -> ip.PrefilterSettings:
-        return ip.PrefilterSettings(
-            min_age=self.min_age,
-            min_los_hospital=self.min_los_hospital,
-            min_los_icu=self.min_los_icu,
-            output_dir=self.prefilter_output_dir
-        )
+    def labels_builder_resource_refs(self) -> lbin.LabelsBuilderResourceRefs:
+        return self._labels_builder_resource_refs
 
 
-DEFAULT_SETTINGS = PreprocessSettings(
+PREPROC_SETTINGS = PreprocessSettings(
     project_root=Path(__file__).parent.parent.parent
 )

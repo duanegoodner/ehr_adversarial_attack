@@ -1,51 +1,24 @@
-from dataclasses import dataclass
-from pathlib import Path
 import pandas as pd
 import preprocess_module as pm
-
-
-@dataclass
-class PrefilterResourceRefs:
-    # admissions: pr.PreprocessResource
-    d_icd_diagnoses: Path
-    diagnoses_icd: Path
-    icustay_detail: Path
-    # pivoted_bg: pr.PreprocessResource
-    # pivoted_gc: pr.PreprocessResource
-    # pivoted_lab: pr.PreprocessResource
-    # pivoted_uo: pr.PreprocessResource
-    # pivoted_vital: pr.PreprocessResource
-
-
-@dataclass
-class PrefilterResources:
-    d_icd_diagnoses: pd.DataFrame
-    diagnoses_icd: pd.DataFrame
-    icustay_detail: pd.DataFrame
-
-
-@dataclass
-class PrefilterSettings:
-    output_dir: Path
-    min_age: int = 18
-    min_los_hospital: int = 1
-    min_los_icu: int = 1
+import prefilter_input_classes as pfin
+from preprocess_settings import PREPROC_SETTINGS
 
 
 class Prefilter(pm.PreprocessModule):
     def __init__(
         self,
-        settings: PrefilterSettings,
-        incoming_resource_refs: PrefilterResourceRefs,
+        settings: pfin.PrefilterSettings,
+        incoming_resource_refs: pfin.PrefilterResourceRefs,
     ):
         super().__init__(
             settings=settings,
             incoming_resource_refs=incoming_resource_refs,
+            resource_container_constructor=pfin.PrefilterResources
         )
 
     @staticmethod
     def _apply_standard_df_formatting(
-        imported_resources: PrefilterResources,
+        imported_resources: pfin.PrefilterResources,
     ):
         for resource in imported_resources.__dict__.values():
             if isinstance(resource, pd.DataFrame):
@@ -72,15 +45,12 @@ class Prefilter(pm.PreprocessModule):
         ].astype("int64")
         return filtered_diagnoses_icd
 
+    # use for better autocomplete of imported_resources attrs in self.process()
+    def _call_import_resources(self) -> pfin.PrefilterResources:
+        return self._import_resources()
+
     def process(self):
-        # Could make constructor a data member for more abstraction, but
-        # then don't get as much IDE auto-complete help
-        imported_resources = PrefilterResources(
-            **{
-                key: self._importer.import_resource(val)
-                for key, val in self._incoming_resource_refs.__dict__.items()
-            }
-        )
+        imported_resources = self._call_import_resources()
         self._apply_standard_df_formatting(
             imported_resources=imported_resources
         )
@@ -101,18 +71,8 @@ class Prefilter(pm.PreprocessModule):
 
 
 if __name__ == "__main__":
-    project_root = Path(__file__).parent.parent.parent
-    data_dir = project_root / "data"
-    sql_result_dir = data_dir / "mimiciii_query_results"
-    prefilter_resources = PrefilterResourceRefs(
-        d_icd_diagnoses=sql_result_dir / "d_icd_diagnoses.csv",
-        diagnoses_icd=sql_result_dir / "diagnoses_icd.csv",
-        icustay_detail=sql_result_dir / "icustay_detail.csv",
-    )
-    prefilter_settings = PrefilterSettings(
-        output_dir=data_dir / "prefilter_output"
-    )
     prefilter = Prefilter(
-        settings=prefilter_settings, incoming_resource_refs=prefilter_resources
+        settings=PREPROC_SETTINGS.prefilter_settings,
+        incoming_resource_refs=PREPROC_SETTINGS.prefilter_resource_refs
     )
     exported_resources = prefilter()
