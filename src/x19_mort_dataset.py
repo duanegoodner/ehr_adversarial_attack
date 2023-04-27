@@ -1,4 +1,3 @@
-import numpy as np
 import pickle
 import torch
 from pathlib import Path
@@ -31,3 +30,7 @@ class X19MortalityDataset(Dataset):
 
     def __getitem__(self, idx: int):
         return self.x19[idx, :, :], self.mort[idx]
+
+
+if __name__ == "__main__":
+    my_dataset = X19MortalityDataset()

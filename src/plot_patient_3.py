@@ -30,34 +30,36 @@ varname_to_index = {
 index_to_varname = {val: key for key, val in varname_to_index.items()}
 
 dataset = X19MortalityDataset()
-first_patient = dataset[0]
+# first_patient = dataset[0]
 
 fig, axes = plt.subplots(4, 1, sharex=True, sharey=False, figsize=(6, 6))
 cbar_ax = fig.add_axes([.92, .3, .02, .4])
 
+first_plot_idx = 20000
+
 sns.heatmap(
-    dataset[0][0],
+    dataset[first_plot_idx][0],
     ax=axes[0],
     cbar=False,
     cmap="RdYlBu_r",
 )
 
 sns.heatmap(
-    dataset[1][0],
+    dataset[first_plot_idx + 1][0],
     ax=axes[1],
     cbar=False,
     cmap="RdYlBu_r",
 )
 
 sns.heatmap(
-    dataset[2][0],
+    dataset[first_plot_idx + 2][0],
     ax=axes[2],
     cbar=False,
     cmap="RdYlBu_r",
 )
 
 sns.heatmap(
-    dataset[3][0],
+    dataset[first_plot_idx + 3][0],
     ax=axes[3],
     cbar=True,
     cmap="RdYlBu_r",

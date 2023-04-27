@@ -86,6 +86,7 @@ class BinaryBidirectionalLSTM(nn.Module):
     ):
         self.train()  # should this be set here or by CrossValidator???
         for epoch in range(num_epochs):
+            print(f"            Running train_model epoch # {epoch}")
             running_loss = 0.0
             for i, (x, y) in enumerate(train_loader):
                 y = y.long()
