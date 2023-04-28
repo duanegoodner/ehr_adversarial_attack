@@ -33,7 +33,13 @@ dataset = X19MortalityDataset()
 # first_patient = dataset[0]
 
 fig, axes = plt.subplots(4, 1, sharex=True, sharey=False, figsize=(6, 6))
+plt.subplots_adjust(right=0.8)
 cbar_ax = fig.add_axes([.92, .3, .02, .4])
+
+
+fig.text(0.5, 0.02, "Time (hours)", ha="center")
+fig.text(0.04, 0.5, "Feature Index", va="center", rotation="vertical")
+
 
 first_plot_idx = 20000
 
@@ -65,10 +71,6 @@ sns.heatmap(
     cmap="RdYlBu_r",
     cbar_ax=cbar_ax
 )
-
-fig.text(0.5, 0.02, "Time (hours)", ha="center")
-fig.text(0.04, 0.5, "Feature Index", va="center", rotation="vertical")
-plt.subplots_adjust(right=0.8)
 
 for i, ax in enumerate(axes):
     ax.xaxis.set_major_locator(ticker.MultipleLocator(5))
