@@ -68,27 +68,20 @@ class CrossValidationTrainer:
         validation_dataloader = DataLoader(
             dataset=validation_split, batch_size=self.batch_size, shuffle=True
         )
-        # print("evaluate model with this split")
-        # for batch_idx, (data, target) in enumerate(validation_dataloader):
-        #     print(batch_idx)
         self.model.evaluate_model(test_loader=validation_dataloader)
 
     def run_one_global_epoch(self):
         for fold_idx, (train_indices, validation_indices) in enumerate(
             self.fold_generator.split(range(self.dataset_size))
         ):
-            print(f"    Training fold # {fold_idx}")
-            for fold_epoch in range(self.epochs_per_fold):
-                print(f"        Running fold_epoch # {fold_epoch}")
-                self.train_fold(train_indices=train_indices)
-            print(f"    Evaluating fold # {fold_idx}")
+            # for fold_epoch in range(self.epochs_per_fold):
+                # self.train_fold(train_indices=train_indices)
+            self.train_fold(train_indices=train_indices)
             self.evaluate_fold(validation_indices=validation_indices)
 
     def run(self):
         self.model.to(self.device)
         for global_epoch in range(self.global_epochs):
-            print(f"Starting global epoch # {global_epoch}")
-            print("-------------------------\n")
             self.run_one_global_epoch()
 
 
@@ -108,7 +101,7 @@ if __name__ == "__main__":
         ),
         num_folds=5,
         batch_size=128,
-        epochs_per_fold=2,
-        global_epochs=1,
+        epochs_per_fold=5,
+        global_epochs=5,
     )
     cv_trainer.run()
