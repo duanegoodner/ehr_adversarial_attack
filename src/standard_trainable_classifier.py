@@ -48,7 +48,7 @@ def calc_standard_metrics(
 class StandardTrainableClassifier(nn.Module, ABC):
     def __init__(
         self,
-        device: torch.device,
+        model_device: torch.device,
         metrics_calculator: Callable[
             [torch.tensor, torch.tensor, torch.tensor], dataclass
         ] = calc_standard_metrics,
@@ -57,10 +57,10 @@ class StandardTrainableClassifier(nn.Module, ABC):
         ] = choose_max_val,
     ):
         super(StandardTrainableClassifier, self).__init__()
-        self.device = device
+        self.model_device = model_device
         self.output_interpreter = output_interpreter
         self.metrics_calculator = metrics_calculator
-        self.to(device=device)
+        self.to(device=model_device)
 
     @abstractmethod
     def forward(self, x: torch.tensor) -> torch.tensor:

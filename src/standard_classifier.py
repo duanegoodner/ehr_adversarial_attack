@@ -87,8 +87,8 @@ class StandardClassifier(ABC, nn.Module):
                 running_loss += loss.item()
             epoch_loss = running_loss / (num_batches + 1)
             print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {epoch_loss:.4f}")
-            if loss_log is not None:
-                loss_log.append(epoch_loss)
+            # if loss_log is not None:
+            #     loss_log.append(epoch_loss)
 
     def evaluate_model(
         self, test_loader: ud.DataLoader, metrics_log: list[dataclass] = None
@@ -109,5 +109,5 @@ class StandardClassifier(ABC, nn.Module):
         )
         print(f"Predictive performance on test data:\n{metrics}\n")
 
-        if metrics_log is not None:
-            metrics_log.append(metrics)
+        # if metrics_log is not None:
+        #     metrics_log.append(metrics)
