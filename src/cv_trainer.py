@@ -23,6 +23,38 @@ class WeightedRandomSamplerBuilder:
         )
 
 
+class CrossValidationTrainingLog:
+    def __init__(
+        self, global_epochs: int, num_folds: int, local_epochs_per_fold: int
+    ):
+        self._global_epochs = global_epochs
+        self._num_folds = num_folds
+        self._local_epochs_per_fold = local_epochs_per_fold
+        self._loss_log = np.zeros(
+            shape=(global_epochs, num_folds, local_epochs_per_fold),
+            dtype=np.double,
+        )
+
+    @property
+    def global_epochs(self) -> int:
+        return self._global_epochs
+
+    @property
+    def num_folds(self) -> int:
+        return self._num_folds
+
+    @property
+    def local_epochs_per_fold(self) -> int:
+        return self._local_epochs_per_fold
+
+    @property
+    def loss_log(self) -> np.array:
+        return self._loss_log
+
+    def write_loss_val(self, global_epoch: int, fold: int, local_epoch: int, val: float):
+        self._loss_log[global_epoch, fold, local_epoch] = val
+
+
 class CrossValidationTrainer:
     def __init__(
         self,
@@ -33,6 +65,8 @@ class CrossValidationTrainer:
         batch_size: int,
         epochs_per_fold: int,
         global_epochs: int,
+        loss_log: list[float] = None,
+        metrics_log: list[list[float]] = None
     ):
         self.device = device
         self.dataset = dataset
@@ -42,6 +76,12 @@ class CrossValidationTrainer:
         self.fold_generator = KFold(n_splits=num_folds, shuffle=True)
         self.epochs_per_fold = epochs_per_fold
         self.global_epochs = global_epochs
+        if loss_log is None:
+            loss_log = []
+        self._loss_log = loss_log
+        if metrics_log is None:
+            metrics_log = []
+        self._metrics_log = metrics_log
 
     @property
     def dataset_size(self) -> int:
@@ -75,7 +115,7 @@ class CrossValidationTrainer:
             self.fold_generator.split(range(self.dataset_size))
         ):
             # for fold_epoch in range(self.epochs_per_fold):
-                # self.train_fold(train_indices=train_indices)
+            # self.train_fold(train_indices=train_indices)
             self.train_fold(train_indices=train_indices)
             self.evaluate_fold(validation_indices=validation_indices)
 

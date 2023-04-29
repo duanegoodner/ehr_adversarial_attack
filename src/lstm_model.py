@@ -65,6 +65,7 @@ class BinaryBidirectionalLSTM(nn.Module):
             lr=learn_rate,
             betas=(beta_1, beta_2),
         )
+        self.to(self.device)
 
     def forward(self, x: torch.tensor):
         h_0 = torch.zeros(2, x.size(0), self.lstm_hidden_size).to(self.device)
@@ -82,13 +83,13 @@ class BinaryBidirectionalLSTM(nn.Module):
     def train_model(
         self,
         train_loader: ud.DataLoader,
-        num_epochs: int,
+        num_epochs: int
     ):
         self.train()  # should this be set here or by CrossValidator???
         for epoch in range(num_epochs):
             running_loss = 0.0
             for i, (x, y) in enumerate(train_loader):
-                y = y.long()
+                # y = y.long()
                 x, y = x.to(self.device), y.to(self.device)
                 self.optimizer.zero_grad()
                 y_hat = self(x).squeeze()
@@ -109,7 +110,6 @@ class BinaryBidirectionalLSTM(nn.Module):
         for x, y in test_loader:
             x, y = x.to(self.device), y.to(self.device)
             y_hat = self(x)
-            # y_pred = (y_hat >= 0.5).type(torch.long)
             y_pred = torch.argmax(y_hat, dim=1)
             all_y_true = torch.cat((all_y_true, y.to("cpu")), dim=0)
             all_y_pred = torch.cat((all_y_pred, y_pred.to("cpu")), dim=0)
@@ -119,7 +119,9 @@ class BinaryBidirectionalLSTM(nn.Module):
             y_score=all_y_score.detach().numpy(),
             y_pred=all_y_pred.detach().numpy(),
             y_true=all_y_true.detach().numpy(),
-            y_true_one_hot=torch.nn.functional.one_hot(all_y_true).detach().numpy()
+            y_true_one_hot=torch.nn.functional.one_hot(all_y_true)
+            .detach()
+            .numpy(),
         )
 
         print(

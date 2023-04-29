@@ -24,6 +24,7 @@ class X19MortalityDataset(Dataset):
         # y pickle file has many targets per sample. we want mort (1st entry)
         all_y = get_pickle_data(y_pickle)
         self.mort = torch.tensor([icu_stay[0] for icu_stay in all_y])
+        print("debug pause")
 
     def __len__(self):
         return len(self.mort)
