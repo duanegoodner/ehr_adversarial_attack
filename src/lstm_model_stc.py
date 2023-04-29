@@ -1,13 +1,9 @@
-import sklearn.metrics as skm
 import torch
 import torch.nn as nn
-from standard_classifier import (
-    StandardClassifier,
-    StandardClassificationMetrics,
-)
+import standard_trainable_classifier as stc
 
 
-class LSTMSun2018(StandardClassifier):
+class LSTMSun2018(stc.StandardTrainableClassifier):
     def __init__(
         self,
         device: torch.device,
@@ -33,8 +29,9 @@ class LSTMSun2018(StandardClassifier):
         self.fc_2 = nn.Linear(in_features=fc_hidden_size, out_features=2)
         # self.act_2 = nn.Sigmoid()
         self.act_2 = nn.Softmax(dim=1)
+        self.to(device=device)
 
-    def forward(self, x: torch.tensor):
+    def forward(self, x: torch.tensor) -> torch.tensor:
         h_0 = torch.zeros(2, x.size(0), self.lstm_hidden_size).to(self.device)
         c_0 = torch.zeros(2, x.size(0), self.lstm_hidden_size).to(self.device)
         lstm_out, (h_n, c_n) = self.lstm(x, (h_0, c_0))
@@ -46,28 +43,3 @@ class LSTMSun2018(StandardClassifier):
         out = self.act_2(fc_2_out)
         # out = torch.softmax(fc_2_out, dim=1)
         return out
-
-    # TODO create separate module with typical functions for this
-    @staticmethod
-    def get_predicted_class(y_hat: torch.tensor) -> torch.tensor:
-        return torch.argmax(y_hat, dim=1)
-
-    # TODO create separate module with typical functions for this
-    @staticmethod
-    def get_classification_metrics(
-        y_score: torch.tensor, y_pred: torch.tensor, y_true: torch.tensor
-    ) -> StandardClassificationMetrics:
-        y_true_one_hot = torch.nn.functional.one_hot(y_true)
-        y_score_np = y_score.detach().numpy()
-        y_pred_np = y_pred.detach().numpy()
-        y_true_np = y_true.detach().numpy()
-
-        return StandardClassificationMetrics(
-            accuracy=skm.accuracy_score(y_true=y_true_np, y_pred=y_pred_np),
-            roc_auc=skm.roc_auc_score(
-                y_true=y_true_one_hot, y_score=y_score_np
-            ),
-            precision=skm.precision_score(y_true=y_true_np, y_pred=y_pred_np),
-            recall=skm.recall_score(y_true=y_true_np, y_pred=y_pred_np),
-            f1=skm.f1_score(y_true=y_true_np, y_pred=y_pred_np),
-        )

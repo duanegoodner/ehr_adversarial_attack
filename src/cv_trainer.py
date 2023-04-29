@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from torch.utils.data import Subset, DataLoader, Dataset, WeightedRandomSampler
 from sklearn.model_selection import KFold
 import numpy as np
@@ -5,6 +6,7 @@ import torch
 import torch.nn as nn
 from x19_mort_dataset import X19MortalityDataset
 from lstm_model import BinaryBidirectionalLSTM
+from standard_classifier import StandardClassifier
 
 
 class WeightedRandomSamplerBuilder:
@@ -23,50 +25,20 @@ class WeightedRandomSamplerBuilder:
         )
 
 
-class CrossValidationTrainingLog:
-    def __init__(
-        self, global_epochs: int, num_folds: int, local_epochs_per_fold: int
-    ):
-        self._global_epochs = global_epochs
-        self._num_folds = num_folds
-        self._local_epochs_per_fold = local_epochs_per_fold
-        self._loss_log = np.zeros(
-            shape=(global_epochs, num_folds, local_epochs_per_fold),
-            dtype=np.double,
-        )
-
-    @property
-    def global_epochs(self) -> int:
-        return self._global_epochs
-
-    @property
-    def num_folds(self) -> int:
-        return self._num_folds
-
-    @property
-    def local_epochs_per_fold(self) -> int:
-        return self._local_epochs_per_fold
-
-    @property
-    def loss_log(self) -> np.array:
-        return self._loss_log
-
-    def write_loss_val(self, global_epoch: int, fold: int, local_epoch: int, val: float):
-        self._loss_log[global_epoch, fold, local_epoch] = val
-
-
-class CrossValidationTrainer:
+class StandardCrossValidationTrainer:
     def __init__(
         self,
         device: torch.device,
         dataset: Dataset,
-        model: nn.Module,  # consider more specific interface class
+        model: StandardClassifier,  # consider more specific interface class
         num_folds: int,
         batch_size: int,
         epochs_per_fold: int,
         global_epochs: int,
+        record_loss: bool,
+        record_metrics: bool,
         loss_log: list[float] = None,
-        metrics_log: list[list[float]] = None
+        metrics_log: list[dataclass] = None
     ):
         self.device = device
         self.dataset = dataset
@@ -76,12 +48,14 @@ class CrossValidationTrainer:
         self.fold_generator = KFold(n_splits=num_folds, shuffle=True)
         self.epochs_per_fold = epochs_per_fold
         self.global_epochs = global_epochs
+        self.record_loss = record_loss
+        self.record_metrics = record_metrics
         if loss_log is None:
             loss_log = []
-        self._loss_log = loss_log
+        self.loss_log = loss_log
         if metrics_log is None:
             metrics_log = []
-        self._metrics_log = metrics_log
+        self.metrics_log = metrics_log
 
     @property
     def dataset_size(self) -> int:
@@ -98,7 +72,9 @@ class CrossValidationTrainer:
             sampler=train_sampler,
         )
         self.model.train_model(
-            train_loader=train_dataloader, num_epochs=self.epochs_per_fold
+            train_loader=train_dataloader,
+            num_epochs=self.epochs_per_fold,
+            loss_log=self.loss_log if self.record_loss else None
         )
 
     def evaluate_fold(self, validation_indices: np.ndarray):
@@ -108,7 +84,10 @@ class CrossValidationTrainer:
         validation_dataloader = DataLoader(
             dataset=validation_split, batch_size=self.batch_size, shuffle=True
         )
-        self.model.evaluate_model(test_loader=validation_dataloader)
+        self.model.evaluate_model(
+            test_loader=validation_dataloader,
+            metrics_log=self.metrics_log if self.record_metrics else None
+        )
 
     def run_one_global_epoch(self):
         for fold_idx, (train_indices, validation_indices) in enumerate(
@@ -123,6 +102,7 @@ class CrossValidationTrainer:
         self.model.to(self.device)
         for global_epoch in range(self.global_epochs):
             self.run_one_global_epoch()
+        return self.metrics_log, self.loss_log
 
 
 if __name__ == "__main__":
@@ -130,7 +110,7 @@ if __name__ == "__main__":
         my_device = torch.device("cuda:0")
     else:
         my_device = torch.device("cpu")
-    cv_trainer = CrossValidationTrainer(
+    cv_trainer = StandardCrossValidationTrainer(
         device=my_device,
         dataset=X19MortalityDataset(),
         model=BinaryBidirectionalLSTM(

@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.utils.data as ud
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Callable, NamedTuple
 
 
 @dataclass
@@ -14,12 +13,18 @@ class StandardClassificationMetrics:
     recall: float
     f1: float
 
+    def __str__(self) -> str:
+        return (
+            f"Accuracy:\t{self.accuracy:.4f}\n"
+            f"AUC:\t\t{self.roc_auc:.4f}\n"
+            f"Precision:\t{self.precision:.4f}\n"
+            f"Recall:\t\t{self.recall:.4f}\n"
+            f"F1:\t\t\t{self.f1:.4f}"
+        )
+
 
 class StandardClassifier(ABC, nn.Module):
-    def __init__(
-        self,
-        device: torch.device
-    ):
+    def __init__(self, device: torch.device):
         super(StandardClassifier, self).__init__()
         self._device = device
         self._loss_fn = None
@@ -63,10 +68,12 @@ class StandardClassifier(ABC, nn.Module):
         pass
 
     def train_model(
-        self, train_loader: ud.DataLoader, num_epochs: int
-    ) -> list[float]:
+        self,
+        train_loader: ud.DataLoader,
+        num_epochs: int,
+        loss_log: list[float] = None,
+    ):
         self.train()
-        each_epoch_loss = []
         for epoch in range(num_epochs):
             running_loss = 0.0
             for num_batches, (x, y) in enumerate(train_loader):
@@ -79,14 +86,13 @@ class StandardClassifier(ABC, nn.Module):
                 self.optimizer.step()
                 running_loss += loss.item()
             epoch_loss = running_loss / (num_batches + 1)
-            print(
-                "Epoch [%d/%d], Loss: %.4f"
-                % (epoch + 1, num_epochs, epoch_loss)
-            )
-            each_epoch_loss.append(epoch_loss)
-        return each_epoch_loss
+            print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {epoch_loss:.4f}")
+            if loss_log is not None:
+                loss_log.append(epoch_loss)
 
-    def evaluate_model(self, test_loader: ud.DataLoader) -> dataclass:
+    def evaluate_model(
+        self, test_loader: ud.DataLoader, metrics_log: list[dataclass] = None
+    ):
         self.eval()
         all_y_true = torch.LongTensor()
         all_y_pred = torch.LongTensor()
@@ -98,9 +104,10 @@ class StandardClassifier(ABC, nn.Module):
             all_y_true = torch.cat((all_y_true, y.to("cpu")), dim=0)
             all_y_pred = torch.cat((all_y_pred, y_pred.to("cpu")), dim=0)
             all_y_score = torch.cat((all_y_score, y_hat.to("cpu")), dim=0)
-
         metrics = self.get_classification_metrics(
             y_score=all_y_score, y_pred=all_y_pred, y_true=all_y_true
         )
+        print(f"Predictive performance on test data:\n{metrics}\n")
 
-        return metrics
+        if metrics_log is not None:
+            metrics_log.append(metrics)
