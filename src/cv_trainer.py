@@ -7,6 +7,10 @@ import torch.nn as nn
 from x19_mort_dataset import X19MortalityDataset
 from lstm_model import BinaryBidirectionalLSTM
 from standard_classifier import StandardClassifier
+from weighted_dataloader_builder import (
+    DataLoaderBuilder,
+    WeightedDataLoaderBuilder,
+)
 
 
 class WeightedRandomSamplerBuilder:
@@ -37,11 +41,13 @@ class StandardCrossValidationTrainer:
         global_epochs: int,
         record_loss: bool,
         record_metrics: bool,
+        dataloader_builder: DataLoaderBuilder = WeightedDataLoaderBuilder(),
         loss_log: list[float] = None,
-        metrics_log: list[dataclass] = None
+        metrics_log: list[dataclass] = None,
     ):
         self.device = device
         self.dataset = dataset
+
         self.model = model
         self.num_folds = num_folds
         self.batch_size = batch_size
@@ -50,6 +56,7 @@ class StandardCrossValidationTrainer:
         self.global_epochs = global_epochs
         self.record_loss = record_loss
         self.record_metrics = record_metrics
+        self.dataloader_builder = dataloader_builder
         if loss_log is None:
             loss_log = []
         self.loss_log = loss_log
@@ -63,18 +70,24 @@ class StandardCrossValidationTrainer:
 
     def train_fold(self, train_indices: np.ndarray):
         train_split = Subset(dataset=self.dataset, indices=train_indices)
-        train_sampler = WeightedRandomSamplerBuilder(
-            skewed_features=self.dataset[train_split.indices][1]
-        ).build()
-        train_dataloader = DataLoader(
+        # train_sampler = WeightedRandomSamplerBuilder(
+        #     skewed_features=self.dataset[train_split.indices][1]
+        # ).build()
+
+        train_dataloader = self.dataloader_builder.build(
             dataset=train_split,
-            batch_size=self.batch_size,
-            sampler=train_sampler,
+            batch_size=self.batch_size
         )
+
+        # train_dataloader = DataLoader(
+        #     dataset=train_split,
+        #     batch_size=self.batch_size,
+        #     sampler=train_sampler,
+        # )
         self.model.train_model(
             train_loader=train_dataloader,
             num_epochs=self.epochs_per_fold,
-            loss_log=self.loss_log if self.record_loss else None
+            loss_log=self.loss_log if self.record_loss else None,
         )
 
     def evaluate_fold(self, validation_indices: np.ndarray):
@@ -86,7 +99,7 @@ class StandardCrossValidationTrainer:
         )
         self.model.evaluate_model(
             test_loader=validation_dataloader,
-            metrics_log=self.metrics_log if self.record_metrics else None
+            metrics_log=self.metrics_log if self.record_metrics else None,
         )
 
     def run_one_global_epoch(self):
@@ -123,5 +136,6 @@ if __name__ == "__main__":
         batch_size=128,
         epochs_per_fold=5,
         global_epochs=5,
+        record_loss=False,
     )
     cv_trainer.run()

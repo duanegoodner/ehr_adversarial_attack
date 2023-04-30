@@ -68,7 +68,9 @@ class StandardModelTrainer:
             running_loss = 0.0
             for num_batches, (x, y) in enumerate(train_loader):
                 # y = y.long()
-                x, y = x.to(self.model.model_device), y.to(self.model.model_device)
+                x, y = x.to(self.model.model_device), y.to(
+                    self.model.model_device
+                )
                 self.optimizer.zero_grad()
                 y_hat = self.model(x).squeeze()
                 loss = self.loss_fn(y_hat, y)
