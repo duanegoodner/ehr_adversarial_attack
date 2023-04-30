@@ -63,6 +63,7 @@ class StandardModelTrainer:
 
     def train_model(self, train_loader: ud.DataLoader, num_epochs: int):
         self.model.train()
+
         for epoch in range(num_epochs):
             running_loss = 0.0
             for num_batches, (x, y) in enumerate(train_loader):
@@ -72,14 +73,13 @@ class StandardModelTrainer:
                 y_hat = self.model(x).squeeze()
                 loss = self.loss_fn(y_hat, y)
                 loss.backward()
-                loss.to("cpu")
-                x.to("cpu")
-                y.to("cpu")
+                # loss.to("cpu")
                 self.optimizer.step()
                 running_loss += loss.item()
             epoch_loss = running_loss / (num_batches + 1)
             print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {epoch_loss:.4f}")
 
+    @torch.no_grad()
     def evaluate_model(self, test_loader: ud.DataLoader):
         self.model.eval()
         all_y_true = torch.LongTensor()
@@ -115,5 +115,5 @@ if __name__ == "__main__":
         ),
     )
 
-    trainer.train_model(train_loader=data_loader, num_epochs=5)
+    trainer.train_model(train_loader=data_loader, num_epochs=3)
     trainer.evaluate_model(test_loader=data_loader)
