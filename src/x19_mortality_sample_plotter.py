@@ -3,7 +3,9 @@ import matplotlib.ticker as ticker
 import seaborn as sns
 import torch
 from torch.utils.data import DataLoader
-from cv_trainer import WeightedRandomSamplerBuilder
+
+# from cv_trainer import WeightedRandomSamplerBuilder
+from weighted_dataloader_builder import WeightedDataLoaderBuilder
 from x19_mort_dataset import X19MortalityDataset
 
 
@@ -131,17 +133,12 @@ class X19MortalitySamplePlotter:
 
 if __name__ == "__main__":
     dataset = X19MortalityDataset()
-    sampler = WeightedRandomSamplerBuilder(
-        skewed_features=dataset[:][1]
-    ).build()
-    data_loader = DataLoader(dataset=dataset, batch_size=4, sampler=sampler)
-
+    data_loader = WeightedDataLoaderBuilder().build(
+        dataset=dataset, batch_size=4
+    )
     data_iter = iter(data_loader)
-
     data_features, data_actual_labels = next(data_iter)
-
     plotter = X19MortalitySamplePlotter()
-
     plotter.plot_samples(
         features=data_features, actual_labels=data_actual_labels
     )

@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.optim
 import torch.utils.data as ud
 from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
 import standard_trainable_classifier as stc
 
 from x19_mort_dataset import X19MortalityDataset
@@ -31,12 +33,22 @@ class StandardModelTrainer:
     def __init__(
         self,
         model: stc.StandardTrainableClassifier,
+        train_dataloader: ud.DataLoader,
+        test_dataloader: ud.DataLoader,
         loss_fn: nn.Module,
         optimizer: torch.optim.Optimizer,
+        save_checkpoints: bool,
+        checkpoint_dir: Path,
+        checkpoint_interval: int = 100,
     ):
         self.model = model
+        self.train_dataloader = train_dataloader
+        self.test_dataloader = test_dataloader
         self.loss_fn = loss_fn
         self.optimizer = optimizer
+        self.save_checkpoints = save_checkpoints
+        self.checkpoint_dir = checkpoint_dir
+        self.checkpoint_interval = checkpoint_interval
 
     @staticmethod
     def interpret_output(model_output: torch.tensor) -> torch.tensor:
@@ -61,13 +73,38 @@ class StandardModelTrainer:
             f1=skm.f1_score(y_true=y_true_np, y_pred=y_pred_np),
         )
 
-    def train_model(self, train_loader: ud.DataLoader, num_epochs: int):
+    def save_checkpoint(
+        self,
+        epoch_num: int,
+        loss: float,
+        metrics: StandardClassificationMetrics,
+    ):
+        filename = f"{datetime.now()}.tar".replace(" ", "_")
+        output_path = self.checkpoint_dir / filename
+        output_object = {
+            "epoch_num": epoch_num,
+            "loss": loss,
+            "metrics": metrics,
+            "state_dict": self.model.state_dict(),
+            "optimizer_state_dict": self.optimizer.state_dict(),
+        }
+        torch.save(obj=output_object, f=output_path)
+
+    def eval_model_and_save_checkpoint(
+        self, epoch_num: int, epoch_loss: float
+    ):
+        metrics = self.evaluate_model()
+        self.save_checkpoint(
+            epoch_num=epoch_num, loss=epoch_loss, metrics=metrics
+        )
+        self.model.train()
+
+    def train_model(self, num_epochs: int):
         self.model.train()
 
         for epoch in range(num_epochs):
             running_loss = 0.0
-            for num_batches, (x, y) in enumerate(train_loader):
-                # y = y.long()
+            for num_batches, (x, y) in enumerate(self.train_dataloader):
                 x, y = x.to(self.model.model_device), y.to(
                     self.model.model_device
                 )
@@ -75,19 +112,24 @@ class StandardModelTrainer:
                 y_hat = self.model(x).squeeze()
                 loss = self.loss_fn(y_hat, y)
                 loss.backward()
-                # loss.to("cpu")
                 self.optimizer.step()
                 running_loss += loss.item()
             epoch_loss = running_loss / (num_batches + 1)
             print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {epoch_loss:.4f}")
+            if (
+                (epoch + 1) % self.checkpoint_interval == 0
+            ) and self.save_checkpoints:
+                self.eval_model_and_save_checkpoint(
+                    epoch_num=epoch, epoch_loss=epoch_loss
+                )
 
     @torch.no_grad()
-    def evaluate_model(self, test_loader: ud.DataLoader):
+    def evaluate_model(self):
         self.model.eval()
         all_y_true = torch.LongTensor()
         all_y_pred = torch.LongTensor()
         all_y_score = torch.FloatTensor()
-        for x, y in test_loader:
+        for x, y in self.test_dataloader:
             x, y = x.to(self.model.model_device), y.to(self.model.model_device)
             y_hat = self.model(x)
             y_pred = self.interpret_output(model_output=y_hat)
@@ -98,6 +140,7 @@ class StandardModelTrainer:
             y_score=all_y_score, y_pred=all_y_pred, y_true=all_y_true
         )
         print(f"Predictive performance on test data:\n{metrics}\n")
+        return metrics
 
 
 if __name__ == "__main__":

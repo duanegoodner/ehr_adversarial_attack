@@ -17,8 +17,7 @@ if __name__ == "__main__":
     )
 
     model_state_path = Path(
-        "/home/duane/dproj/UIUC-DLH/project/ehr_adversarial_attack/data"
-        "/training_results/2023-04-28-01:52:43.097199.tar"
+        "/data/training_results/2023-04-28-01:52:43.097199.tar"
     )
 
     checkpoint = torch.load(model_state_path)
