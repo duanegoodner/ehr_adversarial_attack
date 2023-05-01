@@ -11,6 +11,8 @@ from x19_mort_dataset import X19MortalityDataset
 from lstm_model_stc import LSTMSun2018
 
 
+# TODO Separate Trainner and Evaluator in to two classes
+
 @dataclass
 class StandardClassificationMetrics:
     accuracy: float
