@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import torch.nn as nn
 import torch.utils.data as ud
 from dataclasses import dataclass
 from standard_trainable_classifier import StandardAttackableClassifier
@@ -19,7 +20,7 @@ class StandardInferenceResults:
 class StandardModelInferrer:
     def __init__(
         self,
-        model: StandardAttackableClassifier,
+        model: nn.Module,
         dataset: ud.Dataset,
         batch_size: int = 64,
     ):
