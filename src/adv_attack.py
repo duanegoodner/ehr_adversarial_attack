@@ -21,9 +21,10 @@ class AdversarialLoss(nn.Module):
         self.kappa = kappa
 
     def forward(self, logits: torch.tensor, orig_label: int) -> torch.tensor:
-        return max(
-            logits[orig_label] - logits[int(not orig_label)], self.kappa
-        )
+        # return max(
+        #     logits[orig_label] - logits[int(not orig_label)], self.kappa
+        # )
+        return logits[orig_label] - logits[int(not orig_label)]
 
 
 class AdversarialAttacker(nn.Module):
@@ -70,7 +71,6 @@ class AdversarialAttacker(nn.Module):
             self.optimizer.zero_grad()
             logits = torch.squeeze(self())
             loss = self.loss_fn(logits, self.orig_label) + self.l1_loss()
-            self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
 
