@@ -37,14 +37,19 @@ class AdversarialAttacker(nn.Module):
         self.perturbed_feature = nn.Parameter(
             self.target_dataset[0][0][None, :, :], requires_grad=True
         )
+        self.perturbation = nn.Parameter(
+            self.target_dataset[0][0][None, :, :], requires_grad=True
+        )
         self.loss_fn = AdversarialLoss()
         self.kappa = kappa.to(model_device)
         self.optimizer = torch.optim.SGD(params=self.parameters(), lr=0.001)
         self.l1_beta = 0.001
         self.to(model_device)
 
-    def forward(self) -> torch.tensor:
-        return self.classifier_logit(self.perturbed_feature)
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        x = x + self.perturbation
+        return self.classifier_logit(x)
+        # return self.classifier_logit(self.perturbed_feature)
 
     def l1_loss(self):
         return self.l1_beta * torch.norm(
@@ -111,6 +116,6 @@ if __name__ == "__main__":
             dataset=attack_trainer.correct_predictions_dataset, indices=[0]
         ),
         model_device=cur_device,
-        kappa=torch.tensor(0, requires_grad=True, dtype=torch.float)
+        kappa=torch.tensor(0, requires_grad=True, dtype=torch.float),
     )
     attacker.run_attack(num_epochs=100)
