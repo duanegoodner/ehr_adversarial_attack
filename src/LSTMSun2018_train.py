@@ -1,10 +1,8 @@
 import torch.cuda
 import torch.nn as nn
-from datetime import datetime
 from pathlib import Path
 from torch.utils.data import DataLoader
 from torch.utils.data.dataset import random_split
-from cross_validator import CrossValidator
 from lstm_model_stc import LSTMSun2018
 from standard_model_trainer import StandardModelTrainer
 from weighted_dataloader_builder import WeightedDataLoaderBuilder

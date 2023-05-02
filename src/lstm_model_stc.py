@@ -1,9 +1,10 @@
+from abc import ABC, abstractmethod
 import torch
 import torch.nn as nn
 import standard_trainable_classifier as stc
 
 
-class LSTMSun2018(stc.StandardTrainableClassifier):
+class LSTMSun2018(stc.StandardAttackableClassifier):
     def __init__(
         self,
         model_device: torch.device,
@@ -31,7 +32,7 @@ class LSTMSun2018(stc.StandardTrainableClassifier):
         self.act_2 = nn.Softmax(dim=1)
         self.to(device=model_device)
 
-    def forward(self, x: torch.tensor) -> torch.tensor:
+    def logit_output(self, x: torch.tensor) -> torch.tensor:
         h_0 = torch.zeros(2, x.size(0), self.lstm_hidden_size).to(
             self.model_device
         )
@@ -44,6 +45,25 @@ class LSTMSun2018(stc.StandardTrainableClassifier):
         fc_1_out = self.fc_1(lstm_out[:, -1, :])
         fc_1_out = self.act_1(fc_1_out)
         fc_2_out = self.fc_2(fc_1_out)
-        out = self.act_2(fc_2_out)
+        return fc_2_out
+
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        # h_0 = torch.zeros(2, x.size(0), self.lstm_hidden_size).to(
+        #     self.model_device
+        # )
+        # c_0 = torch.zeros(2, x.size(0), self.lstm_hidden_size).to(
+        #     self.model_device
+        # )
+        # lstm_out, (h_n, c_n) = self.lstm(x, (h_0, c_0))
+        # lstm_out = self.act_lstm(lstm_out)
+        # lstm_out = self.dropout(lstm_out)
+        # fc_1_out = self.fc_1(lstm_out[:, -1, :])
+        # fc_1_out = self.act_1(fc_1_out)
+        # fc_2_out = self.fc_2(fc_1_out)
+        logit_out = self.logit_output(x)
+        out = self.act_2(logit_out)
         # out = torch.softmax(fc_2_out, dim=1)
         return out
+
+
+

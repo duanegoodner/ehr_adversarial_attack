@@ -2,8 +2,7 @@ import numpy as np
 import torch
 import torch.utils.data as ud
 from dataclasses import dataclass
-from functools import cached_property
-from standard_trainable_classifier import StandardTrainableClassifier
+from standard_trainable_classifier import StandardAttackableClassifier
 
 
 @dataclass
@@ -20,15 +19,15 @@ class StandardInferenceResults:
 class StandardModelInferrer:
     def __init__(
         self,
-        model: StandardTrainableClassifier,
+        model: StandardAttackableClassifier,
         dataset: ud.Dataset,
-        batch_size: int = 128,
+        batch_size: int = 64,
     ):
         self.model = model
         self.dataset = dataset
         self.batch_size = batch_size
         self.data_loader = ud.DataLoader(
-            dataset=dataset, batch_size=batch_size, shuffle=True
+            dataset=dataset, batch_size=batch_size, shuffle=False
         )
 
     # extract this from evaluate function so it can be easily overridden
@@ -52,3 +51,9 @@ class StandardModelInferrer:
         return StandardInferenceResults(
             y_pred=all_y_pred, y_score=all_y_score, y_true=all_y_true
         )
+
+    @torch.no_grad()
+    def get_logits(self, x: torch.tensor):
+        self.model.eval()
+        logits = self.model.logit_output(x=x)
+        return logits
