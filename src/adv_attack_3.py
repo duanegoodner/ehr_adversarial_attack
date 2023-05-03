@@ -64,6 +64,7 @@ class AdversarialAttackTrainer:
         attacker: AdversarialAttacker,
         dataset: Dataset,
         kappa: float = 0,
+        l1_beta: float = 0.2,
     ):
         self._device = device
         self._attacker = attacker
@@ -75,9 +76,15 @@ class AdversarialAttackTrainer:
         self._kappa = torch.tensor([kappa], dtype=torch.float32).to(
             self._device
         )
+        self._l1_beta = l1_beta
 
     def _build_single_sample_data_loader(self) -> DataLoader:
         return DataLoader(dataset=self._dataset, batch_size=1, shuffle=False)
+
+    def _l1_loss(self):
+        return self._l1_beta * torch.norm(
+            self._attacker.feature_perturber.perturbation
+        )
 
     def train_attacker(self, epochs_per_sample: int):
         dataloader = self._build_single_sample_data_loader()
@@ -107,7 +114,7 @@ class AdversarialAttackTrainer:
                     logits=logits,
                     orig_label=orig_label.item(),
                     kappa=self._kappa,
-                )
+                ) + self._l1_loss()
                 if (loss.item() < lowest_loss) and (
                     (logits[0][int(not orig_label)] - self._kappa)
                     > logits[0][orig_label]

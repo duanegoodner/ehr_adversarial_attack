@@ -29,15 +29,20 @@ class SingleSampleFeaturePerturber(nn.Module):
             self.perturbation.grad.zero_()
         self._perturbation_min = -1 * orig_feature
         self._perturbation_max = 1 - orig_feature
-        unscaled_perturbation = 2 * torch.rand_like(orig_feature) - 1
-        scaled_perturbation = (
-            self._perturbation_init_max * unscaled_perturbation
+
+        # unscaled_perturbation = 2 * torch.rand_like(orig_feature) - 1
+        # scaled_perturbation = (
+        #     self._perturbation_init_max * unscaled_perturbation
+        # )
+        # self.perturbation.data = torch.clamp(
+        #     scaled_perturbation,
+        #     min=self._perturbation_min,
+        #     max=self._perturbation_max,
+        # ).to(self._device)
+
+        self.perturbation.data = torch.zeros_like(orig_feature).to(
+            self._device
         )
-        self.perturbation.data = torch.clamp(
-            scaled_perturbation,
-            min=self._perturbation_min,
-            max=self._perturbation_max,
-        ).to(self._device)
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         return x + self.perturbation
