@@ -37,6 +37,14 @@ class AdversarialAttacker(nn.Module):
         #  instantiated here or if can be instantiated by constructor caller
         #  and passed as params
         self.pretrained_lstm = LSTMSun2018Logit(model_device=cur_device)
+        my_checkpoint_path = Path(
+            "/home/duane/dproj/UIUC-DLH/project/ehr_adversarial_attack/data"
+            "/training_results/2023-04-30_18:49:09.556432.tar"
+        )
+        my_checkpoint = torch.load(my_checkpoint_path)
+        self.pretrained_lstm.load_state_dict(
+            my_checkpoint["model_state_dict"], strict=False
+        )
         # TODO find way to avoid hard-coding feature_dims
         #  (get sample feature shape)
         self.feature_perturber = SingleSampleFeaturePerturber(
@@ -64,7 +72,7 @@ class AdversarialAttackTrainer:
         attacker: AdversarialAttacker,
         dataset: Dataset,
         kappa: float = 0,
-        l1_beta: float = 0.2,
+        l1_beta: float = 1,
     ):
         self._device = device
         self._attacker = attacker
@@ -88,13 +96,15 @@ class AdversarialAttackTrainer:
 
     def train_attacker(self, epochs_per_sample: int):
         dataloader = self._build_single_sample_data_loader()
-        self._attacker.feature_perturber.train()
+        # self._attacker.feature_perturber.train()
+        self._attacker.train()
         for param in self._attacker.pretrained_lstm.parameters():
             param.requires_grad = False
         # self._attacker.pretrained_lstm.eval()
 
         all_best_perturbation = torch.FloatTensor()
         all_orig_feature = torch.FloatTensor()
+        all_num_adv_examples_found = torch.LongTensor()
 
         for num_batches, (orig_features, orig_label) in enumerate(dataloader):
             self._attacker.feature_perturber.reset_parameters(
@@ -105,16 +115,19 @@ class AdversarialAttackTrainer:
             orig_features, correct_label = orig_features.to(
                 self._device
             ), orig_label.to(self._device)
-
+            num_adv_examples_found = 0
             perturbed_features = torch.clone(orig_features)
             for epoch in range(epochs_per_sample):
                 self._optimizer.zero_grad()
                 perturbed_features, logits = self._attacker(perturbed_features)
-                loss = self._loss_fn(
-                    logits=logits,
-                    orig_label=orig_label.item(),
-                    kappa=self._kappa,
-                ) + self._l1_loss()
+                loss = (
+                    self._loss_fn(
+                        logits=logits,
+                        orig_label=orig_label.item(),
+                        kappa=self._kappa,
+                    )
+                    + self._l1_loss()
+                )
                 if (loss.item() < lowest_loss) and (
                     (logits[0][int(not orig_label)] - self._kappa)
                     > logits[0][orig_label]
@@ -123,6 +136,7 @@ class AdversarialAttackTrainer:
                     best_perturbation = self._attacker.feature_perturber.perturbation.detach().to(
                         "cpu"
                     )
+                    num_adv_examples_found += 1
                 loss.backward()
                 self._optimizer.step()
             all_best_perturbation = torch.cat(
@@ -131,7 +145,17 @@ class AdversarialAttackTrainer:
             all_orig_feature = torch.cat(
                 (all_orig_feature, orig_features.to("cpu"))
             )
-        return all_best_perturbation, all_orig_feature
+            all_num_adv_examples_found = torch.cat(
+                (
+                    all_num_adv_examples_found,
+                    torch.tensor([num_adv_examples_found]),
+                )
+            )
+        return (
+            all_num_adv_examples_found,
+            all_best_perturbation,
+            all_orig_feature,
+        )
 
 
 if __name__ == "__main__":
@@ -151,9 +175,14 @@ if __name__ == "__main__":
     )
 
     full_dataset = X19MortalityDataset()
-    correctly_predicted_data = StandardModelInferrer(
+
+    # small_dataset = Subset(dataset=full_dataset, indices=[2, 3])
+
+    inferrer = StandardModelInferrer(
         model=predictive_model, dataset=full_dataset
-    ).get_correctly_predicted_samples()
+    )
+
+    correctly_predicted_data = inferrer.get_correctly_predicted_samples()
 
     small_correctly_predicted_data = Subset(
         dataset=correctly_predicted_data, indices=list(range(10))

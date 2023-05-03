@@ -21,7 +21,7 @@ class LSTMSun2018Logit(nn.Module):
             batch_first=True,
         )
         self.act_lstm = nn.Tanh()
-        self.dropout = nn.Dropout(p=0.5)
+        # self.dropout = nn.Dropout(p=0.5)
         self.fc_1 = nn.Linear(
             in_features=2 * lstm_hidden_size, out_features=fc_hidden_size
         )
@@ -38,7 +38,7 @@ class LSTMSun2018Logit(nn.Module):
         )
         lstm_out, (h_n, c_n) = self.lstm(x, (h_0, c_0))
         lstm_out = self.act_lstm(lstm_out)
-        lstm_out = self.dropout(lstm_out)
+        # lstm_out = self.dropout(lstm_out)
         fc_1_out = self.fc_1(lstm_out[:, -1, :])
         fc_1_out = self.act_1(fc_1_out)
         fc_2_out = self.fc_2(fc_1_out)
