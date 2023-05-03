@@ -43,7 +43,7 @@ class AdderTrainer:
     ):
         self._device = device
         self._adder = adder
-        self._optimizer = torch.optim.Adam(params=adder.parameters(), lr=0.05)
+        self._optimizer = torch.optim.SGD(params=adder.parameters(), lr=0.05)
         self._loss_fn = torch.nn.MSELoss()
         self._dataset = dataset
 

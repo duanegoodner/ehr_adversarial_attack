@@ -72,12 +72,12 @@ class AdversarialAttackTrainer:
         attacker: AdversarialAttacker,
         dataset: Dataset,
         kappa: float = 0,
-        l1_beta: float = 1,
+        l1_beta: float = 50,
     ):
         self._device = device
         self._attacker = attacker
         self._optimizer = torch.optim.Adam(
-            params=attacker.parameters(), lr=0.001
+            params=attacker.parameters(), lr=1e-4
         )
         self._loss_fn = AdversarialLoss()
         self._dataset = dataset
