@@ -4,7 +4,7 @@ import torch.nn as nn
 import standard_trainable_classifier as stc
 
 
-class LSTMSun2018(stc.StandardAttackableClassifier):
+class LSTMSun2018(stc.StandardTrainableClassifier):
     def __init__(
         self,
         model_device: torch.device,

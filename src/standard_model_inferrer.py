@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.utils.data as ud
 from dataclasses import dataclass
-from standard_trainable_classifier import StandardAttackableClassifier
+from standard_trainable_classifier import StandardTrainableClassifier
 
 
 @dataclass
@@ -22,7 +22,7 @@ class StandardModelInferrer:
         self,
         model: nn.Module,
         dataset: ud.Dataset,
-        batch_size: int = 64,
+        batch_size: int = 128,
     ):
         self.model = model
         self.dataset = dataset
@@ -53,8 +53,9 @@ class StandardModelInferrer:
             y_pred=all_y_pred, y_score=all_y_score, y_true=all_y_true
         )
 
-    @torch.no_grad()
-    def get_logits(self, x: torch.tensor):
-        self.model.eval()
-        logits = self.model.logit_output(x=x)
-        return logits
+    def get_correctly_predicted_samples(self) -> ud.Dataset:
+        inference_results = self.infer()
+        return ud.Subset(
+            dataset=self.dataset,
+            indices=inference_results.correct_prediction_indices[0],
+        )

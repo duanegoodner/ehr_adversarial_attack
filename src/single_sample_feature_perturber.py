@@ -6,7 +6,8 @@ class SingleSampleFeaturePerturber(nn.Module):
     def __init__(
         self,
         device: torch.device,
-        feature_dims: tuple[int, int],
+        # TODO consider making feature_dims a torch.Size instead of tuple
+        feature_dims: tuple[int, int, int],
         perturbation_init_max: float = 0.001,
     ):
         super(SingleSampleFeaturePerturber, self).__init__()
@@ -36,7 +37,7 @@ class SingleSampleFeaturePerturber(nn.Module):
             scaled_perturbation,
             min=self._perturbation_min,
             max=self._perturbation_max,
-        )
+        ).to(self._device)
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         return x + self.perturbation
