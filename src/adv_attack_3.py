@@ -72,12 +72,15 @@ class AdversarialAttackTrainer:
         attacker: AdversarialAttacker,
         dataset: Dataset,
         kappa: float = 0,
-        l1_beta: float = 50,
+        l1_beta: float = 0.1,
     ):
         self._device = device
         self._attacker = attacker
-        self._optimizer = torch.optim.Adam(
-            params=attacker.parameters(), lr=1e-4
+        # self._optimizer = torch.optim.Adam(
+        #     params=attacker.parameters(), lr=1e-4
+        # )
+        self._optimizer = torch.optim.SGD(
+            params=attacker.parameters(), lr=0.001
         )
         self._loss_fn = AdversarialLoss()
         self._dataset = dataset
@@ -119,7 +122,7 @@ class AdversarialAttackTrainer:
             perturbed_features = torch.clone(orig_features)
             for epoch in range(epochs_per_sample):
                 self._optimizer.zero_grad()
-                perturbed_features, logits = self._attacker(perturbed_features)
+                perturbed_features, logits = self._attacker(orig_features)
                 loss = (
                     self._loss_fn(
                         logits=logits,
@@ -194,6 +197,7 @@ if __name__ == "__main__":
         device=cur_device,
         attacker=x19_lstm_attacker,
         dataset=small_correctly_predicted_data,
+        kappa=35
     )
 
-    result = trainer.train_attacker(epochs_per_sample=100)
+    result = trainer.train_attacker(epochs_per_sample=50)
