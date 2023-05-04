@@ -179,9 +179,7 @@ class AdversarialAttackTrainer:
         orig_features: torch.tensor,
         orig_label: torch.tensor,
     ):
-        self._attacker.feature_perturber.reset_parameters(
-            orig_feature=orig_features
-        )
+        self._attacker.feature_perturber.reset_parameters()
         orig_features, correct_label = orig_features.to(
             self._device
         ), orig_label.to(self._device)
@@ -269,10 +267,10 @@ if __name__ == "__main__":
         device=cur_device,
         attacker=x19_lstm_attacker,
         dataset=small_correctly_predicted_data,
-        learning_rate=1e-3,
-        kappa=10,
-        l1_beta=1e-3,
-        epochs_per_batch=50,
+        learning_rate=5e-2,
+        kappa=0,
+        l1_beta=0.125,
+        epochs_per_batch=100,
     )
 
     trainer.train_attacker()
