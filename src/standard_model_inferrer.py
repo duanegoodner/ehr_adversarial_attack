@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torch.utils.data as ud
 from dataclasses import dataclass
+from dataset_with_index import DatasetWithIndex
 from standard_trainable_classifier import StandardTrainableClassifier
 
 
@@ -21,7 +22,7 @@ class StandardModelInferrer:
     def __init__(
         self,
         model: nn.Module,
-        dataset: ud.Dataset,
+        dataset: DatasetWithIndex,
         batch_size: int = 128,
     ):
         self.model = model
@@ -42,7 +43,7 @@ class StandardModelInferrer:
         all_y_true = torch.LongTensor()
         all_y_pred = torch.LongTensor()
         all_y_score = torch.FloatTensor()
-        for x, y in self.data_loader:
+        for index, x, y in self.data_loader:
             x, y = x.to(self.model.model_device), y.to(self.model.model_device)
             y_hat = self.model(x)
             y_pred = self.interpret_output(model_output=y_hat)

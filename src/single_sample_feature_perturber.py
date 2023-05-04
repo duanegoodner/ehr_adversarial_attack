@@ -7,7 +7,7 @@ class SingleSampleFeaturePerturber(nn.Module):
         self,
         device: torch.device,
         # TODO consider making feature_dims a torch.Size instead of tuple
-        feature_dims: tuple[int, int, int],
+        feature_dims: tuple[int, ...],
         perturbation_init_max: float = 0.001,
     ):
         super(SingleSampleFeaturePerturber, self).__init__()
