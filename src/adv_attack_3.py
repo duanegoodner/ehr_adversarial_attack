@@ -8,9 +8,8 @@ from dataset_with_index import DatasetWithIndex
 from lstm_model_stc import LSTMSun2018
 from lstm_sun_2018_logit_out import LSTMSun2018Logit
 from single_sample_feature_perturber import SingleSampleFeaturePerturber
-
 from standard_model_inferrer import StandardModelInferrer
-from x19_mort_dataset import X19MortalityDataset, X19MortalityDatasetWithIndex
+from x19_mort_dataset import X19MortalityDatasetWithIndex
 
 
 class AdversarialLoss(nn.Module):
@@ -46,36 +45,27 @@ class AdversarialAttacker(nn.Module):
         return perturbed_feature, logits
 
 
-# TODO Can this be changed to a dataclass?
+@dataclass
 class AdversarialExamplesSummary:
-    def __init__(
-        self,
-        dataset: DatasetWithIndex | Path,
-        indices: torch.tensor = None,
-        num_non_zero_perturbation_elements: torch.tensor = None,
-        loss_vals: torch.tensor = None,
-        perturbations: torch.tensor = None,
-    ):
-        self.dataset = dataset
-        if indices is None:
-            indices = torch.LongTensor()
-        if num_non_zero_perturbation_elements is None:
-            num_non_zero_perturbation_elements = torch.LongTensor()
-        if loss_vals is None:
-            loss_vals = torch.FloatTensor()
-        if perturbations is None:
-            perturbations = torch.FloatTensor()
-        self.indices = indices
-        self.num_nonzero_perturbation_elements = (
-            num_non_zero_perturbation_elements
-        )
-        self.loss_vals = loss_vals
-        self.perturbations = perturbations
+    dataset: DatasetWithIndex | Path
+    indices: torch.tensor = None
+    num_nonzero_perturbation_elements: torch.tensor = None
+    loss_vals: torch.tensor = None
+    perturbations: torch.tensor = None
+
+    def __post_init__(self):
+        if self.indices is None:
+            self.indices = torch.LongTensor()
+        if self.num_nonzero_perturbation_elements is None:
+            self.num_nonzero_perturbation_elements = torch.LongTensor()
+        if self.loss_vals is None:
+            self.loss_vals = torch.FloatTensor()
+        if self.perturbations is None:
+            self.perturbations = torch.FloatTensor()
 
     def update(
         self,
         index: torch.tensor,
-        # num_nonzero: torch.tensor,
         loss: torch.tensor,
         perturbation: torch.tensor,
     ):
@@ -139,13 +129,12 @@ class AdversarialAttackTrainer:
             self._attacker.feature_perturber.perturbation
         )
 
+    #     attacker backprop does not work if call .eval() on logitout,
+    #     so need to be sure logitout does not have any dropout layers
     def _set_attacker_to_train_mode(self):
         self._attacker.train()
         for param in self._attacker.logitout_model.parameters():
             param.requires_grad = False
-
-    #     attacker backprop does not work if call .eval() on logitout,
-    #     so need to be sure logitout does not have any dropout layers
 
     # Currently require batch size == 1
     def _attack_batch(
