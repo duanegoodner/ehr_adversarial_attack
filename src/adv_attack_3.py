@@ -112,7 +112,7 @@ class AdversarialAttackTrainer:
         if adv_examples_summary is None:
             adv_examples_summary = AdversarialExamplesSummary(dataset=dataset)
         self.adv_examples_summary = adv_examples_summary
-        self._optimizer = torch.optim.SGD(
+        self._optimizer = torch.optim.Adam(
             params=attacker.parameters(), lr=learning_rate
         )
         self._loss_fn = AdversarialLoss()
@@ -267,9 +267,9 @@ if __name__ == "__main__":
         device=cur_device,
         attacker=x19_lstm_attacker,
         dataset=small_correctly_predicted_data,
-        learning_rate=5e-2,
+        learning_rate=0.1,
         kappa=0,
-        l1_beta=0.125,
+        l1_beta=0.15,
         epochs_per_batch=100,
     )
 
