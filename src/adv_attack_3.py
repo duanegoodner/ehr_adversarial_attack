@@ -100,6 +100,7 @@ class AdversarialAttackTrainer:
         device: torch.device,
         attacker: AdversarialAttacker,
         dataset: X19MortalityDatasetWithIndex,
+        learning_rate: float,
         kappa: float,
         l1_beta: float,
         epochs_per_batch: int,
@@ -112,7 +113,7 @@ class AdversarialAttackTrainer:
             adv_examples_summary = AdversarialExamplesSummary(dataset=dataset)
         self.adv_examples_summary = adv_examples_summary
         self._optimizer = torch.optim.SGD(
-            params=attacker.parameters(), lr=0.001
+            params=attacker.parameters(), lr=learning_rate
         )
         self._loss_fn = AdversarialLoss()
         self._dataset = dataset
@@ -135,6 +136,41 @@ class AdversarialAttackTrainer:
         self._attacker.train()
         for param in self._attacker.logitout_model.parameters():
             param.requires_grad = False
+
+    @torch.no_grad()
+    def _apply_bounded_soft_threshold(self, orig_features: torch.tensor):
+        perturbation_min = -1 * orig_features
+        perturbation_max = torch.ones_like(orig_features) - orig_features
+
+        zero_mask = (
+            torch.abs(self._attacker.feature_perturber.perturbation)
+            <= self._l1_beta
+        )
+        self._attacker.feature_perturber.perturbation[zero_mask] = 0
+
+        pos_mask = (
+            self._attacker.feature_perturber.perturbation > self._l1_beta
+        )
+        self._attacker.feature_perturber.perturbation[
+            pos_mask
+        ] -= self._l1_beta
+
+        neg_mask = (
+            self._attacker.feature_perturber.perturbation < -1 * self._l1_beta
+        )
+        self._attacker.feature_perturber.perturbation[
+            neg_mask
+        ] += self._l1_beta
+
+        clamped_perturbation = torch.clamp(
+            input=self._attacker.feature_perturber.perturbation.data,
+            min=perturbation_min,
+            max=perturbation_max,
+        )
+
+        self._attacker.feature_perturber.perturbation.data.copy_(
+            clamped_perturbation
+        )
 
     # Currently require batch size == 1
     def _attack_batch(
@@ -172,7 +208,7 @@ class AdversarialAttackTrainer:
                 )
             loss.backward()
             self._optimizer.step()
-            #     TODO: Add soft thresholding here
+            self._apply_bounded_soft_threshold(orig_features=orig_features)
 
     def train_attacker(self):
         dataloader = self._build_single_sample_data_loader()
@@ -233,8 +269,9 @@ if __name__ == "__main__":
         device=cur_device,
         attacker=x19_lstm_attacker,
         dataset=small_correctly_predicted_data,
+        learning_rate=1e-3,
         kappa=10,
-        l1_beta=0.2,
+        l1_beta=1e-3,
         epochs_per_batch=50,
     )
 
