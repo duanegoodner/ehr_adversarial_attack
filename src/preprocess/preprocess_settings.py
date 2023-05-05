@@ -15,9 +15,6 @@ class PreprocessSettings:
             min_los_icu=1,
         )
         self._prefilter_resource_refs = pfin.PrefilterResourceRefs(
-            admissions=self._sql_output_dir / "admissions.csv",
-            d_icd_diagnoses=self._sql_output_dir / "d_icd_diagnoses.csv",
-            diagnoses_icd=self._sql_output_dir / "diagnoses_icd.csv",
             icustay=self._sql_output_dir / "icustay_detail.csv",
             bg=self._sql_output_dir / "pivoted_bg.csv",
             vital=self._sql_output_dir / "pivoted_vital.csv",

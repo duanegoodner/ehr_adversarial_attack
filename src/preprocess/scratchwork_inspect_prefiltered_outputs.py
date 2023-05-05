@@ -11,21 +11,7 @@ prefiltered_output_dir = (
 
 importer = rio.ResourceImporter()
 
-
-# admissions = importer.import_resource(
-#     prefiltered_output_dir / "admissions.pickle"
-# )
-
-
 icustay = importer.import_resource(prefiltered_output_dir / "icustay.pickle")
-
-# d_icd_diagnoses = importer.import_resource(
-#     prefiltered_output_dir / "d_icd_diagnoses.pickle"
-# )
-#
-# diagnoses_icd = importer.import_resource(
-#     prefiltered_output_dir / "diagnoses_icd.pickle"
-# )
 
 bg = importer.import_resource(prefiltered_output_dir / "bg.pickle")
 

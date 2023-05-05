@@ -41,18 +41,6 @@ class Prefilter(pm.PreprocessModule):
         return df
 
     @staticmethod
-    def _filter_diagnoses_icd(
-        diagnoses_icd: pd.DataFrame, icustay: pd.DataFrame
-    ) -> pd.DataFrame:
-        filtered_diagnoses_icd = diagnoses_icd[
-            diagnoses_icd["subject_id"].isin(icustay["subject_id"])
-        ].dropna()
-        filtered_diagnoses_icd["seq_num"] = filtered_diagnoses_icd[
-            "seq_num"
-        ].astype("int64")
-        return filtered_diagnoses_icd
-
-    @staticmethod
     def _filter_measurement_df(
         df: pd.DataFrame,
         identifier_cols: list[str],
@@ -144,29 +132,6 @@ class Prefilter(pm.PreprocessModule):
 
         return vital
 
-    @staticmethod
-    def _filter_admissions(
-        admissions: pd.DataFrame, icustay: pd.DataFrame
-    ) -> pd.DataFrame:
-        admissions["admittime"] = pd.to_datetime(admissions["admittime"])
-        admissions["dischtime"] = pd.to_datetime(admissions["dischtime"])
-        admissions = admissions[
-            admissions["hadm_id"].isin(icustay["hadm_id"])
-        ]
-        admissions = admissions[
-            [
-                "subject_id",
-                "hadm_id",
-                "admittime",
-                "dischtime",
-                "deathtime",
-                "admission_type",
-                "hospital_expire_flag",
-                "has_chartevents_data",
-            ]
-        ]
-        return admissions
-
     # use for better autocomplete of imported_resources attrs in self.process()
     def _call_import_resources(self) -> pfin.PrefilterResources:
         return self._import_resources()
@@ -179,10 +144,6 @@ class Prefilter(pm.PreprocessModule):
         imported_resources.icustay = self._filter_icustay(
             df=imported_resources.icustay
         )
-        imported_resources.diagnoses_icd = self._filter_diagnoses_icd(
-            diagnoses_icd=imported_resources.diagnoses_icd,
-            icustay=imported_resources.icustay,
-        )
         imported_resources.bg = self._filter_bg(
             bg=imported_resources.bg,
             icustay=imported_resources.icustay,
@@ -193,10 +154,6 @@ class Prefilter(pm.PreprocessModule):
         )
         imported_resources.vital = self._filter_vital(
             vital=imported_resources.vital,
-            icustay=imported_resources.icustay,
-        )
-        imported_resources.admissions = self._filter_admissions(
-            admissions=imported_resources.admissions,
             icustay=imported_resources.icustay,
         )
 

@@ -20,6 +20,7 @@ class PreprocessModule(ABC):
         self._importer = importer
         self._exporter = exporter
         self._resource_container_constructor = resource_container_constructor
+        self._resource_container = None
         self._incoming_resource_refs = incoming_resource_refs
         if exported_resources is None:
             exported_resources = {}
@@ -27,6 +28,7 @@ class PreprocessModule(ABC):
 
     # TODO Add ability to only import certain resource refs instead of all?
     def _import_resources(self) -> dataclass:
+
         resource_container = self._resource_container_constructor(
             **self._incoming_resource_refs.__dict__
         )

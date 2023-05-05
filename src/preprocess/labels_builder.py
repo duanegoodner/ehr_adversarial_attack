@@ -1,3 +1,6 @@
+# Not needed, and will not work with current version of Preprocess
+# (Preprocess does not provide diagnoses dataframes)
+
 import numpy as np
 import pandas as pd
 import labels_builder_input_classes as lbin
