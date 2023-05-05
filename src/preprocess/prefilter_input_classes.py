@@ -8,10 +8,10 @@ class PrefilterResourceRefs:
     admissions: Path
     d_icd_diagnoses: Path
     diagnoses_icd: Path
-    icustay_detail: Path
-    pivoted_bg: Path
-    pivoted_vital: Path
-    pivoted_lab: Path
+    icustay: Path
+    bg: Path
+    vital: Path
+    lab: Path
     # pivoted_gc: pr.PreprocessResource
     # pivoted_uo: pr.PreprocessResource
 
@@ -21,10 +21,10 @@ class PrefilterResources:
     admissions: pd.DataFrame
     d_icd_diagnoses: pd.DataFrame
     diagnoses_icd: pd.DataFrame
-    icustay_detail: pd.DataFrame
-    pivoted_bg: pd.DataFrame
-    pivoted_vital: pd.DataFrame
-    pivoted_lab: pd.DataFrame
+    icustay: pd.DataFrame
+    bg: pd.DataFrame
+    vital: pd.DataFrame
+    lab: pd.DataFrame
 
 
 @dataclass

@@ -18,10 +18,10 @@ class PreprocessSettings:
             admissions=self._sql_output_dir / "admissions.csv",
             d_icd_diagnoses=self._sql_output_dir / "d_icd_diagnoses.csv",
             diagnoses_icd=self._sql_output_dir / "diagnoses_icd.csv",
-            icustay_detail=self._sql_output_dir / "icustay_detail.csv",
-            pivoted_bg=self._sql_output_dir / "pivoted_bg.csv",
-            pivoted_vital=self._sql_output_dir / "pivoted_vital.csv",
-            pivoted_lab=self._sql_output_dir / "pivoted_lab.csv"
+            icustay=self._sql_output_dir / "icustay_detail.csv",
+            bg=self._sql_output_dir / "pivoted_bg.csv",
+            vital=self._sql_output_dir / "pivoted_vital.csv",
+            lab=self._sql_output_dir / "pivoted_lab.csv"
         )
         self._labels_builder_settings = lbin.LabelsBuilderSettings(
             output_dir=self._data_dir / "labels_builder_output",

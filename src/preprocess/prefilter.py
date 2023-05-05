@@ -24,7 +24,7 @@ class Prefilter(pm.PreprocessModule):
             if isinstance(resource, pd.DataFrame):
                 resource.columns = [item.lower() for item in resource.columns]
 
-    def _filter_icustay_detail(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _filter_icustay(self, df: pd.DataFrame) -> pd.DataFrame:
         df["admittime"] = pd.to_datetime(df["admittime"])
         df["dischtime"] = pd.to_datetime(df["dischtime"])
         df["intime"] = pd.to_datetime(df["intime"])
@@ -35,14 +35,17 @@ class Prefilter(pm.PreprocessModule):
             & (df["los_hospital"] >= self._settings.min_los_hospital)
             & (df["los_icu"] >= self._settings.min_los_icu)
         ]
+
+        df = df.drop(["ethnicity", "ethnicity_grouped", "gender"], axis=1)
+
         return df
 
     @staticmethod
     def _filter_diagnoses_icd(
-        diagnoses_icd: pd.DataFrame, icustay_detail: pd.DataFrame
+        diagnoses_icd: pd.DataFrame, icustay: pd.DataFrame
     ) -> pd.DataFrame:
         filtered_diagnoses_icd = diagnoses_icd[
-            diagnoses_icd["subject_id"].isin(icustay_detail["subject_id"])
+            diagnoses_icd["subject_id"].isin(icustay["subject_id"])
         ].dropna()
         filtered_diagnoses_icd["seq_num"] = filtered_diagnoses_icd[
             "seq_num"
@@ -50,51 +53,117 @@ class Prefilter(pm.PreprocessModule):
         return filtered_diagnoses_icd
 
     @staticmethod
-    def _filter_pivoted_bg(
-        pivoted_bg: pd.DataFrame, icustay_detail: pd.DataFrame
+    def _filter_measurement_df(
+        df: pd.DataFrame,
+        identifier_cols: list[str],
+        measurements_of_interest: list[str],
+    ):
+        df = df[identifier_cols + measurements_of_interest]
+        df = df.dropna(subset=measurements_of_interest, how="all")
+        return df
+
+    def _filter_bg(
+        self, bg: pd.DataFrame, icustay: pd.DataFrame
     ) -> pd.DataFrame:
-        pivoted_bg["charttime"] = pd.to_datetime(pivoted_bg["charttime"])
-        pivoted_bg["icustay_id"] = (
-            pivoted_bg["icustay_id"].fillna(0).astype("int64")
+        bg["charttime"] = pd.to_datetime(bg["charttime"])
+        bg["icustay_id"] = (
+            bg["icustay_id"].fillna(0).astype("int64")
         )
-        pivoted_bg = pivoted_bg[
-            pivoted_bg["hadm_id"].isin(icustay_detail["hadm_id"])
+        bg = bg[
+            bg["hadm_id"].isin(icustay["hadm_id"])
         ]
-
-        return pivoted_bg
-
-    @staticmethod
-    def _filter_pivoted_lab(
-        pivoted_lab: pd.DataFrame, icustay_detail: pd.DataFrame
-    ) -> pd.DataFrame:
-        pivoted_lab["icustay_id"] = pivoted_lab["icustay_id"].fillna(0).astype(
-            "int64"
+        bg = self._filter_measurement_df(
+            df=bg,
+            identifier_cols=["icustay_id", "hadm_id", "charttime"],
+            measurements_of_interest=[
+                "potassium",
+                "calcium",
+                "ph",
+                "pco2",
+                "lactate",
+            ],
         )
-        pivoted_lab["hadm_id"] = pivoted_lab["hadm_id"].fillna(0).astype("int64")
-        pivoted_lab["charttime"] = pd.to_datetime(pivoted_lab["charttime"])
-        pivoted_lab = pivoted_lab[
-            pivoted_lab["hadm_id"].isin(icustay_detail["hadm_id"])
-        ]
-        return pivoted_lab
 
-    @staticmethod
-    def _filter_pivoted_vital(
-        pivoted_vital: pd.DataFrame, icustay_detail: pd.DataFrame
+        return bg
+
+    def _filter_lab(
+        self, lab: pd.DataFrame, icustay: pd.DataFrame
     ) -> pd.DataFrame:
-        pivoted_vital["charttime"] = pd.to_datetime(pivoted_vital["charttime"])
-        pivoted_vital = pivoted_vital[
-            pivoted_vital["icustay_id"].isin(icustay_detail["icustay_id"])
+        lab["icustay_id"] = (
+            lab["icustay_id"].fillna(0).astype("int64")
+        )
+        lab["hadm_id"] = (
+            lab["hadm_id"].fillna(0).astype("int64")
+        )
+        lab["charttime"] = pd.to_datetime(lab["charttime"])
+        lab = lab[
+            lab["hadm_id"].isin(icustay["hadm_id"])
         ]
-        return pivoted_vital
+        lab = self._filter_measurement_df(
+            df=lab,
+            identifier_cols=[
+                "icustay_id",
+                "hadm_id",
+                "subject_id",
+                "charttime",
+            ],
+            measurements_of_interest=[
+                "albumin",
+                "bun",
+                "creatinine",
+                "sodium",
+                "bicarbonate",
+                "glucose",
+                "inr",
+            ],
+        )
+
+        return lab
+
+    def _filter_vital(
+        self, vital: pd.DataFrame, icustay: pd.DataFrame
+    ) -> pd.DataFrame:
+        vital["charttime"] = pd.to_datetime(vital["charttime"])
+        vital = vital[
+            vital["icustay_id"].isin(icustay["icustay_id"])
+        ]
+
+        vital = self._filter_measurement_df(
+            df=vital,
+            identifier_cols=["icustay_id", "charttime"],
+            measurements_of_interest=[
+                "heartrate",
+                "sysbp",
+                "diasbp",
+                "tempc",
+                "resprate",
+                "spo2",
+                "glucose",
+            ],
+        )
+
+        return vital
 
     @staticmethod
     def _filter_admissions(
-        admissions: pd.DataFrame, icustay_detail: pd.DataFrame
+        admissions: pd.DataFrame, icustay: pd.DataFrame
     ) -> pd.DataFrame:
         admissions["admittime"] = pd.to_datetime(admissions["admittime"])
         admissions["dischtime"] = pd.to_datetime(admissions["dischtime"])
         admissions = admissions[
-            admissions["hadm_id"].isin(icustay_detail["hadm_id"])
+            admissions["hadm_id"].isin(icustay["hadm_id"])
+        ]
+        admissions = admissions[
+            [
+                "subject_id",
+                "hadm_id",
+                "admittime",
+                "dischtime",
+                "deathtime",
+                "admission_type",
+                "hospital_expire_flag",
+                "has_chartevents_data",
+            ]
         ]
         return admissions
 
@@ -107,29 +176,28 @@ class Prefilter(pm.PreprocessModule):
         self._apply_standard_df_formatting(
             imported_resources=imported_resources
         )
-        imported_resources.icustay_detail = self._filter_icustay_detail(
-            df=imported_resources.icustay_detail
+        imported_resources.icustay = self._filter_icustay(
+            df=imported_resources.icustay
         )
         imported_resources.diagnoses_icd = self._filter_diagnoses_icd(
             diagnoses_icd=imported_resources.diagnoses_icd,
-            icustay_detail=imported_resources.icustay_detail,
+            icustay=imported_resources.icustay,
         )
-        imported_resources.pivoted_bg = self._filter_pivoted_bg(
-            pivoted_bg=imported_resources.pivoted_bg,
-            icustay_detail=imported_resources.icustay_detail,
+        imported_resources.bg = self._filter_bg(
+            bg=imported_resources.bg,
+            icustay=imported_resources.icustay,
         )
-        imported_resources.pivoted_lab = self._filter_pivoted_lab(
-            pivoted_lab=imported_resources.pivoted_lab,
-            icustay_detail=imported_resources.icustay_detail,
+        imported_resources.lab = self._filter_lab(
+            lab=imported_resources.lab,
+            icustay=imported_resources.icustay,
         )
-        imported_resources.pivoted_vital = self._filter_pivoted_vital(
-            pivoted_vital=imported_resources.pivoted_vital,
-            icustay_detail=imported_resources.icustay_detail,
-
+        imported_resources.vital = self._filter_vital(
+            vital=imported_resources.vital,
+            icustay=imported_resources.icustay,
         )
         imported_resources.admissions = self._filter_admissions(
             admissions=imported_resources.admissions,
-            icustay_detail=imported_resources.icustay_detail,
+            icustay=imported_resources.icustay,
         )
 
         for key, val in imported_resources.__dict__.items():
