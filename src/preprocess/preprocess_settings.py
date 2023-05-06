@@ -8,7 +8,7 @@ class PreprocessSettings:
         self._project_root = project_root
         self._data_dir = project_root / "data"
         self._sql_output_dir = self._data_dir / "mimiciii_query_results"
-        self._prefilter_output_dir = self._data_dir / "prefilter_output"
+        self._prefilter_output_dir = self._data_dir / "output_prefilter"
 
         self._feature_builder_settings = pfin.FeatureBuilderSettings(
             output_dir=self._data_dir / "feature_builder_output",

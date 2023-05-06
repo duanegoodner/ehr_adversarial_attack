@@ -1,6 +1,15 @@
 import pandas as pd
+from dataclasses import dataclass
 import preprocess_module as pm
 import prefilter_input_classes as pfin
+
+
+@dataclass
+class ICUStayMeasurementCombinerResources:
+    icustay: pd.DataFrame
+    bg: pd.DataFrame
+    lab: pd.DataFrame
+    vital: pd.DataFrame
 
 
 class ICUStayMeasurementCombiner(pm.PreprocessModule):
@@ -12,12 +21,23 @@ class ICUStayMeasurementCombiner(pm.PreprocessModule):
         super().__init__(
             settings=settings,
             incoming_resource_refs=incoming_resource_refs,
-            resource_container_constructor=pfin.ICUStayMeasurementCombinerResources,
         )
 
+    def _import_resources(self) -> ICUStayMeasurementCombinerResources:
+        imported_data = ICUStayMeasurementCombinerResources(
+            icustay=self.import_pickle_to_df(
+                self.incoming_resource_refs.icustay
+            ),
+            bg=self.import_pickle_to_df(self.incoming_resource_refs.bg),
+            lab=self.import_pickle_to_df(self.incoming_resource_refs.lab),
+            vital=self.import_pickle_to_df(self.incoming_resource_refs.vital),
+        )
+
+        return imported_data
+
     # have this for better autocomplete in process() (do same in prefilter.py)
-    def call_import_resources(self) -> pfin.FeatureBuilderResources:
-        return self._import_resources()
+    # def call_import_resources(self) -> pfin.FeatureBuilderResources:
+    #     return self._import_resources()
 
     def create_id_bg(
         self, bg: pd.DataFrame, icustay: pd.DataFrame
@@ -89,14 +109,12 @@ class ICUStayMeasurementCombiner(pm.PreprocessModule):
             on=["subject_id", "hadm_id", "icustay_id", "charttime"],
             how="outer",
         )
-        id_bg_lab_vital = (
-            pd.merge(
-                left=id_bg_lab,
-                right=id_vital,
-                on=["subject_id", "hadm_id", "icustay_id", "charttime"],
-                how="outer",
-                suffixes=("_bglab", "_vital"),
-            )
+        id_bg_lab_vital = pd.merge(
+            left=id_bg_lab,
+            right=id_vital,
+            on=["subject_id", "hadm_id", "icustay_id", "charttime"],
+            how="outer",
+            suffixes=("_bglab", "_vital"),
         )
 
         return id_bg_lab_vital
@@ -116,7 +134,7 @@ class ICUStayMeasurementCombiner(pm.PreprocessModule):
         return info_id_bg_lab_vital
 
     def process(self):
-        data = self.call_import_resources()
+        data = self._import_resources()
         id_bg = self.create_id_bg(bg=data.bg, icustay=data.icustay)
         id_lab = self.create_id_lab(lab=data.lab, icustay=data.icustay)
         id_vital = self.create_id_vital(vital=data.vital, icustay=data.icustay)
@@ -126,7 +144,7 @@ class ICUStayMeasurementCombiner(pm.PreprocessModule):
         icustay_bg_lab_vital = self.combine_icustay_info_with_measurements(
             id_bg_lab_vital=id_bg_lab_vital, icustay=data.icustay
         )
-        self._export_resource(
+        self.export_resource(
             key="icustay_bg_lab_vital",
             resource=icustay_bg_lab_vital,
             path=self.settings.output_dir / "icustay_bg_lab_vital.pickle",

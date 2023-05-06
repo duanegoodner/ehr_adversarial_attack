@@ -2,30 +2,37 @@ import numpy as np
 import dill
 import pandas as pd
 from dataclasses import dataclass
-from pathlib import Path
 import preprocess_module as pm
 import preprocess_resource as pr
 import prefilter_input_classes as pfin
+
+
+@dataclass
+class FullAdmissionListBuilderResources:
+    icustay_bg_lab_vital: pd.DataFrame
 
 
 class FullAdmissionListBuilder(pm.PreprocessModule):
     def __init__(
         self,
         settings=pfin.FullAdmissionListBuilderSettings(),
-        incoming_resource_refs=pfin.FullAdmissionListBuilderResourceRefs,
+        incoming_resource_refs=pfin.FullAdmissionListBuilderResourceRefs(),
     ):
         super().__init__(
             settings=settings,
             incoming_resource_refs=incoming_resource_refs,
-            resource_container_constructor=pfin.FullAdmissionListBuilderResources,
         )
 
-    # have this for better autocomplete in process() (do same in prefilter.py)
-    def call_import_resources(self) -> pfin.FullAdmissionListBuilderResources:
-        return self._import_resources()
+    def _import_resources(self) -> FullAdmissionListBuilderResources:
+        imported_data = FullAdmissionListBuilderResources(
+            icustay_bg_lab_vital=self.import_pickle_to_df(
+                path=self.incoming_resource_refs.icustay_bg_lab_vital
+            )
+        )
+        return imported_data
 
     def process(self):
-        data = self.call_import_resources()
+        data = self._import_resources()
         data.icustay_bg_lab_vital = data.icustay_bg_lab_vital.drop(
             [
                 "dod",
@@ -36,7 +43,8 @@ class FullAdmissionListBuilder(pm.PreprocessModule):
                 "first_hosp_stay",
                 "los_icu",
                 "first_icu_stay",
-            ], axis=1
+            ],
+            axis=1,
         )
 
         df_grouped_by_hadm = data.icustay_bg_lab_vital.groupby(["hadm_id"])
@@ -67,6 +75,3 @@ class FullAdmissionListBuilder(pm.PreprocessModule):
 if __name__ == "__main__":
     full_admission_list_builder = FullAdmissionListBuilder()
     exported_resources = full_admission_list_builder()
-
-
-

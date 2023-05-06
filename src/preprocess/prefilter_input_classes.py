@@ -7,7 +7,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
 SQL_OUTPUT_DIR = DATA_DIR / "mimiciii_query_results"
-PREFILTER_OUTPUT_DIR = DATA_DIR / "prefilter_output"
+PREFILTER_OUTPUT_DIR = DATA_DIR / "output_prefilter"
 MERGED_STAY_MEASUREMENT_OUTPUT_DIR = (
     DATA_DIR / "output_merged_stay_measurements"
 )
@@ -45,14 +45,6 @@ class PrefilterResourceRefs:
 
 
 @dataclass
-class PrefilterResources:
-    icustay: pd.DataFrame
-    bg: pd.DataFrame
-    vital: pd.DataFrame
-    lab: pd.DataFrame
-
-
-@dataclass
 class PrefilterSettings:
     output_dir: Path = PREFILTER_OUTPUT_DIR
     min_age: int = 18
@@ -66,14 +58,6 @@ class ICUStayMeasurementCombinerResourceRefs:
     bg: Path = PREFILTER_OUTPUT_DIR / "bg.pickle"
     lab: Path = PREFILTER_OUTPUT_DIR / "lab.pickle"
     vital: Path = PREFILTER_OUTPUT_DIR / "vital.pickle"
-
-
-@dataclass
-class ICUStayMeasurementCombinerResources:
-    icustay: pd.DataFrame
-    bg: pd.DataFrame
-    lab: pd.DataFrame
-    vital: pd.DataFrame
 
 
 @dataclass
@@ -106,11 +90,6 @@ class FullAdmissionListBuilderResourceRefs:
 
 
 @dataclass
-class FullAdmissionListBuilderResources:
-    icustay_bg_lab_vital: pd.DataFrame
-
-
-@dataclass
 class FullAdmissionListBuilderSettings:
     output_dir: Path = SAMPLE_LIST_BUILDER_OUTPUT_DIR
     measurement_cols: list[str] = None
@@ -139,7 +118,7 @@ class FullAdmissionData:
     time_series: pd.DataFrame
 
 
- # https://stackoverflow.com/a/65392400  (need this to work with dill)
+#  https://stackoverflow.com/a/65392400  (need this to work with dill)
 FullAdmissionData.__module__ = __name__
 
 

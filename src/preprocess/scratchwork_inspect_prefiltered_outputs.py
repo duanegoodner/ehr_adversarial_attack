@@ -7,7 +7,7 @@ import resource_io as rio
 import scipy.stats.mstats as mstats
 
 prefiltered_output_dir = (
-    Path(__file__).parent.parent.parent / "data" / "prefilter_output"
+    Path(__file__).parent.parent.parent / "data" / "output_prefilter"
 )
 
 importer = rio.ResourceImporter()
