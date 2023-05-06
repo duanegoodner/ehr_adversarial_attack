@@ -13,10 +13,10 @@ class PrefilterResourceRefs:
 
 @dataclass
 class PrefilterResources:
-    icustay: pd.DataFrame = None
-    bg: pd.DataFrame = None
-    vital: pd.DataFrame = None
-    lab: pd.DataFrame = None
+    icustay: pd.DataFrame
+    bg: pd.DataFrame
+    vital: pd.DataFrame
+    lab: pd.DataFrame
 
 
 @dataclass
@@ -25,6 +25,36 @@ class PrefilterSettings:
     min_age: int = 18
     min_los_hospital: int = 1
     min_los_icu: int = 1
+
+
+@dataclass
+class ICUStayMeasurementCombinerResourceRefs:
+    icustay: Path
+    bg: Path
+    lab: Path
+    vital: Path
+
+
+@dataclass
+class ICUStayMeasurementCombinerResources:
+    icustay: Path
+    bg: Path
+    lab: Path
+    vital: Path
+
+
+@dataclass
+class ICUStayMeasurementCombinerSettings:
+    output_dir: Path
+    winsorize_upper: float
+    winsorize_lower: float
+    bg_data_cols: list[str]
+    lab_data_cols: list[str]
+    vital_data_cols: list[str]
+
+    @property
+    def all_measurement_cols(self) -> list[str]:
+        return self.bg_data_cols + self.lab_data_cols + self.vital_data_cols
 
 
 @dataclass
@@ -37,13 +67,21 @@ class FeatureBuilderResourceRefs:
 
 @dataclass
 class FeatureBuilderResources:
-    icustay: Path
-    bg: Path
-    lab: Path
-    vital: Path
+    icustay: pd.DataFrame
+    bg: pd.DataFrame
+    lab: pd.DataFrame
+    vital: pd.DataFrame
 
 
 @dataclass
 class FeatureBuilderSettings:
     output_dir: Path
+    winsorize_upper: float
+    winsorize_lower: float
+    bg_data_cols: list[str]
+    lab_data_cols: list[str]
+    vital_data_cols: list[str]
 
+    @property
+    def all_measurement_cols(self) -> list[str]:
+        return self.bg_data_cols + self.lab_data_cols + self.vital_data_cols

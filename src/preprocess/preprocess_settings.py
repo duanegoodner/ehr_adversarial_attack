@@ -8,8 +8,9 @@ class PreprocessSettings:
         self._project_root = project_root
         self._data_dir = project_root / "data"
         self._sql_output_dir = self._data_dir / "mimiciii_query_results"
+        self._prefilter_output_dir = self._data_dir / "prefilter_output"
         self._prefilter_settings = pfin.PrefilterSettings(
-            output_dir=self._data_dir / "prefilter_output",
+            output_dir=self._prefilter_output_dir,
             min_age=18,
             min_los_hospital=1,
             min_los_icu=1,
@@ -18,19 +19,36 @@ class PreprocessSettings:
             icustay=self._sql_output_dir / "icustay_detail.csv",
             bg=self._sql_output_dir / "pivoted_bg.csv",
             vital=self._sql_output_dir / "pivoted_vital.csv",
-            lab=self._sql_output_dir / "pivoted_lab.csv"
+            lab=self._sql_output_dir / "pivoted_lab.csv",
         )
-        self._labels_builder_settings = lbin.LabelsBuilderSettings(
-            output_dir=self._data_dir / "labels_builder_output",
-            num_diagnoses=25,
+        self._feature_builder_settings = pfin.FeatureBuilderSettings(
+            output_dir=self._data_dir / "feature_builder_output",
+            winsorize_upper=0.95,
+            winsorize_lower=0.05,
+            bg_data_cols=["potassium", "calcium", "ph", "pco2", "lactate"],
+            lab_data_cols=[
+                "albumin",
+                "bun",
+                "creatinine",
+                "sodium",
+                "bicarbonate",
+                "glucose",
+                "inr",
+            ],
+            vital_data_cols=[
+                "heartrate",
+                "sysbp",
+                "diasbp",
+                "tempc",
+                "resprate",
+                "spo2",
+            ],
         )
-        self._labels_builder_resource_refs = lbin.LabelsBuilderResourceRefs(
-            d_icd_diagnoses=self._data_dir
-            / "prefilter_output"
-            / "d_icd_diagnoses.pickle",
-            diagnoses_icd=self._data_dir
-            / "prefilter_output"
-            / "diagnoses_icd.pickle",
+        self._feature_builder_resource_refs = pfin.FeatureBuilderResourceRefs(
+            icustay=self._prefilter_output_dir / "icustay.pickle",
+            bg=self._prefilter_output_dir / "bg.pickle",
+            lab=self._prefilter_output_dir / "lab.pickle",
+            vital=self._prefilter_output_dir / "vital.pickle",
         )
 
     @property
@@ -42,12 +60,12 @@ class PreprocessSettings:
         return self._prefilter_resource_refs
 
     @property
-    def labels_builder_settings(self) -> lbin.LabelsBuilderSettings:
-        return self._labels_builder_settings
+    def feature_builder_settings(self) -> pfin.FeatureBuilderSettings:
+        return self._feature_builder_settings
 
     @property
-    def labels_builder_resource_refs(self) -> lbin.LabelsBuilderResourceRefs:
-        return self._labels_builder_resource_refs
+    def feature_builder_resource_refs(self) -> pfin.FeatureBuilderResourceRefs:
+        return self._feature_builder_resource_refs
 
 
 PREPROC_SETTINGS = PreprocessSettings(
