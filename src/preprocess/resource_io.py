@@ -1,3 +1,5 @@
+# TODO Change to dill and use dill.dump / dill.load syntax.
+# TODO Consider removing this module. May be overkill.
 import copy
 import pandas as pd
 import pickle
@@ -19,7 +21,7 @@ class ResourceImporter:
     }
 
     def _id_resource_type(self, resource: object) -> ResourceType:
-        if isinstance(resource, (str, bytes, Path )):
+        if isinstance(resource, (str, bytes, Path)):
             return self._validate_path(path=Path(resource))
         else:
             return ResourceType.OBJECT
@@ -51,7 +53,6 @@ class ResourceImporter:
             ResourceType.CSV: self._import_csv,
             ResourceType.PICKLE: self._import_pickle,
             ResourceType.OBJECT: self._import_py_object,
-
         }
 
     def import_resource(self, resource: object) -> object:
@@ -60,7 +61,6 @@ class ResourceImporter:
 
 
 class ResourceExporter:
-
     _supported_file_types = [".pickle"]
 
     def export(self, resource: object, path: Path):
@@ -70,7 +70,3 @@ class ResourceExporter:
 
     def _validate_path(self, path: Path):
         assert f".{path.name.split('.')[-1]}" in self._supported_file_types
-
-
-
-

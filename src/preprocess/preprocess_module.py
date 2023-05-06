@@ -16,7 +16,7 @@ class PreprocessModule(ABC):
         exporter: rio.ResourceExporter = rio.ResourceExporter(),
         exported_resources: dict[str, pr.ExportedPreprocessResource] = None,
     ):
-        self._settings = settings
+        self.settings = settings
         self._importer = importer
         self._exporter = exporter
         self._resource_container_constructor = resource_container_constructor

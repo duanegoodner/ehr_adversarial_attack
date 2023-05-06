@@ -1,14 +1,13 @@
 import pandas as pd
 import preprocess_module as pm
 import prefilter_input_classes as pfin
-from preprocess_settings import PREPROC_SETTINGS
 
 
 class Prefilter(pm.PreprocessModule):
     def __init__(
         self,
-        settings: pfin.PrefilterSettings,
-        incoming_resource_refs: pfin.PrefilterResourceRefs,
+        settings=pfin.PrefilterSettings(),
+        incoming_resource_refs=pfin.PrefilterResourceRefs(),
     ):
         super().__init__(
             settings=settings,
@@ -31,9 +30,9 @@ class Prefilter(pm.PreprocessModule):
         df["outtime"] = pd.to_datetime(df["outtime"])
 
         df = df[
-            (df["admission_age"] >= self._settings.min_age)
-            & (df["los_hospital"] >= self._settings.min_los_hospital)
-            & (df["los_icu"] >= self._settings.min_los_icu)
+            (df["admission_age"] >= self.settings.min_age)
+            & (df["los_hospital"] >= self.settings.min_los_hospital)
+            & (df["los_icu"] >= self.settings.min_los_icu)
         ]
 
         df = df.drop(["ethnicity", "ethnicity_grouped", "gender"], axis=1)
@@ -161,13 +160,10 @@ class Prefilter(pm.PreprocessModule):
             self._export_resource(
                 key=key,
                 resource=val,
-                path=self._settings.output_dir / f"{key}.pickle",
+                path=self.settings.output_dir / f"{key}.pickle",
             )
 
 
 if __name__ == "__main__":
-    prefilter = Prefilter(
-        settings=PREPROC_SETTINGS.prefilter_settings,
-        incoming_resource_refs=PREPROC_SETTINGS.prefilter_resource_refs,
-    )
+    prefilter = Prefilter()
     exported_resources = prefilter()
