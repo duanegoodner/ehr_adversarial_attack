@@ -37,9 +37,7 @@ class CrossValidator:
         train_dataloader = self.dataloader_builder.build(
             dataset=train_split, batch_size=self.batch_size
         )
-        self.trainer.train_model(
-            train_loader=train_dataloader,
-            num_epochs=self.epochs_per_fold)
+        self.trainer.train_model(num_epochs=self.epochs_per_fold)
 
     def evaluate_fold(self, validation_indices: np.ndarray):
         validation_split = Subset(

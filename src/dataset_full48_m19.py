@@ -65,5 +65,10 @@ class Full48M19Dataset(Dataset):
         )
 
 
+class Full48M19DatasetWithIndex(Full48M19Dataset, DatasetWithIndex):
+    def __getitem__(self, idx: int):
+        return idx, self.measurements[idx, :, :], self.in_hosp_mort[idx]
+
+
 if __name__ == "__main__":
     full48_m19_dataset = Full48M19Dataset.from_feature_finalizer_output()
