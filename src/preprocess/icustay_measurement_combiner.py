@@ -35,10 +35,6 @@ class ICUStayMeasurementCombiner(pm.PreprocessModule):
 
         return imported_data
 
-    # have this for better autocomplete in process() (do same in prefilter.py)
-    # def call_import_resources(self) -> pfin.FeatureBuilderResources:
-    #     return self._import_resources()
-
     def create_id_bg(
         self, bg: pd.DataFrame, icustay: pd.DataFrame
     ) -> pd.DataFrame:
@@ -144,10 +140,21 @@ class ICUStayMeasurementCombiner(pm.PreprocessModule):
         icustay_bg_lab_vital = self.combine_icustay_info_with_measurements(
             id_bg_lab_vital=id_bg_lab_vital, icustay=data.icustay
         )
+
+        summary_stats = icustay_bg_lab_vital[
+            self.settings.all_measurement_cols
+        ].describe(percentiles=[0.05, 0.25, 0.50, 0.75, 0.95])
+
         self.export_resource(
             key="icustay_bg_lab_vital",
             resource=icustay_bg_lab_vital,
             path=self.settings.output_dir / "icustay_bg_lab_vital.pickle",
+        )
+
+        self.export_resource(
+            key="bg_lab_vital_summary_stats",
+            resource=summary_stats,
+            path=self.settings.output_dir / "bg_lab_vital_summary_stats.pickle"
         )
 
 

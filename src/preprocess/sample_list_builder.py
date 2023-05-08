@@ -49,7 +49,7 @@ class FullAdmissionListBuilder(pm.PreprocessModule):
 
         df_grouped_by_hadm = data.icustay_bg_lab_vital.groupby(["hadm_id"])
         list_of_group_dfs = [group[1] for group in df_grouped_by_hadm]
-        full_admission_data_list = [
+        full_admission_list = [
             pfin.FullAdmissionData(
                 subject_id=np.unique(item.subject_id),
                 hadm_id=np.unique(item.hadm_id),
@@ -65,10 +65,10 @@ class FullAdmissionListBuilder(pm.PreprocessModule):
         ]
 
         output_path = self.settings.output_dir / "full_admission_list.pickle"
-        dill.dump(full_admission_data_list, output_path.open(mode="wb"))
-
-        return pr.ExportedPreprocessResource(
-            path=output_path, data_type=".pickle"
+        self.export_resource(
+            key="full_admission_list",
+            resource=full_admission_list,
+            path=output_path
         )
 
 

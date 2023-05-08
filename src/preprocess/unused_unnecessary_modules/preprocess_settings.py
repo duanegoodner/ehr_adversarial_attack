@@ -1,5 +1,4 @@
 from pathlib import Path
-import labels_builder_input_classes as lbin
 import prefilter_input_classes as pfin
 
 

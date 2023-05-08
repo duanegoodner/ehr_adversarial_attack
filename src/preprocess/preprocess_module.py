@@ -40,6 +40,9 @@ class PreprocessModule(ABC):
     def import_pickle_to_object(self, path: Path) -> object:
         return self.resource_importer.import_pickle_to_object(path=path)
 
+    def import_pickle_to_list(self, path: Path) -> list:
+        return self.resource_importer.import_pickle_to_list(path=path)
+
     def export_resource(self, key: str, resource: object, path: Path):
         assert key not in self.exported_resources
         assert path not in [

@@ -16,6 +16,10 @@ SAMPLE_LIST_BUILDER_OUTPUT_DIR = (
     DATA_DIR / "output_full_admission_list_builder"
 )
 
+FEATURE_BUILDER_OUTPUT_DIR = DATA_DIR / "output_feature_builder"
+
+FEATURE_FINALIZER_OUTPUT_DIR = DATA_DIR / "output_feature_finalizer"
+
 BG_DATA_COLS = ["potassium", "calcium", "ph", "pco2", "lactate"]
 LAB_DATA_COLS = [
     "albumin",
@@ -23,6 +27,7 @@ LAB_DATA_COLS = [
     "creatinine",
     "sodium",
     "bicarbonate",
+    "platelet",
     "glucose",
     "inr",
 ]
@@ -50,6 +55,17 @@ class PrefilterSettings:
     min_age: int = 18
     min_los_hospital: int = 1
     min_los_icu: int = 1
+    bg_data_cols: list[str] = None
+    lab_data_cols: list[str] = None
+    vital_data_cols: list[str] = None
+
+    def __post_init__(self):
+        if self.bg_data_cols is None:
+            self.bg_data_cols = BG_DATA_COLS
+        if self.lab_data_cols is None:
+            self.lab_data_cols = LAB_DATA_COLS
+        if self.vital_data_cols is None:
+            self.vital_data_cols = VITAL_DATA_COLS
 
 
 @dataclass
@@ -124,29 +140,37 @@ FullAdmissionData.__module__ = __name__
 
 @dataclass
 class FeatureBuilderResourceRefs:
-    icustay: Path
-    bg: Path
-    lab: Path
-    vital: Path
-
-
-@dataclass
-class FeatureBuilderResources:
-    icustay: pd.DataFrame
-    bg: pd.DataFrame
-    lab: pd.DataFrame
-    vital: pd.DataFrame
+    full_admission_list: Path = (
+        SAMPLE_LIST_BUILDER_OUTPUT_DIR / "full_admission_list.pickle"
+    )
+    bg_lab_vital_summary_stats: Path = (
+        MERGED_STAY_MEASUREMENT_OUTPUT_DIR
+        / "bg_lab_vital_summary_stats.pickle"
+    )
 
 
 @dataclass
 class FeatureBuilderSettings:
-    output_dir: Path
-    winsorize_upper: float
-    winsorize_lower: float
-    bg_data_cols: list[str]
-    lab_data_cols: list[str]
-    vital_data_cols: list[str]
+    output_dir: Path = FEATURE_BUILDER_OUTPUT_DIR
+    winsorize_low: str = "5%"
+    winsorize_high: str = "95%"
+    resample_interpolation_method: str = "linear"
+    resample_limit_direction: str = "both"
 
-    @property
-    def all_measurement_cols(self) -> list[str]:
-        return self.bg_data_cols + self.lab_data_cols + self.vital_data_cols
+
+#     TODO add data member for cutoff time after admit or before discharge
+
+
+@dataclass
+class FeatureFinalizerResourceRefs:
+    processed_admission_list: Path = (
+        FEATURE_BUILDER_OUTPUT_DIR / "hadm_list_with_processed_dfs.pickle"
+    )
+
+
+@dataclass
+class FeatureFinalizerSettings:
+    output_dir: Path = FEATURE_FINALIZER_OUTPUT_DIR
+    observation_window_in_hours: int = 48
+    require_exact_num_hours: bool = True  # when True, no need for padding
+    observation_window_start: str = "intime"

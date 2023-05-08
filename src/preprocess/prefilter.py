@@ -66,13 +66,7 @@ class Prefilter(pm.PreprocessModule):
         bg = self._filter_measurement_df(
             df=bg,
             identifier_cols=["icustay_id", "hadm_id", "charttime"],
-            measurements_of_interest=[
-                "potassium",
-                "calcium",
-                "ph",
-                "pco2",
-                "lactate",
-            ],
+            measurements_of_interest=self.settings.bg_data_cols,
         )
 
         return bg
@@ -92,15 +86,7 @@ class Prefilter(pm.PreprocessModule):
                 "subject_id",
                 "charttime",
             ],
-            measurements_of_interest=[
-                "albumin",
-                "bun",
-                "creatinine",
-                "sodium",
-                "bicarbonate",
-                "glucose",
-                "inr",
-            ],
+            measurements_of_interest=self.settings.lab_data_cols,
         )
 
         return lab
@@ -114,15 +100,7 @@ class Prefilter(pm.PreprocessModule):
         vital = self._filter_measurement_df(
             df=vital,
             identifier_cols=["icustay_id", "charttime"],
-            measurements_of_interest=[
-                "heartrate",
-                "sysbp",
-                "diasbp",
-                "tempc",
-                "resprate",
-                "spo2",
-                "glucose",
-            ],
+            measurements_of_interest=self.settings.vital_data_cols,
         )
 
         return vital

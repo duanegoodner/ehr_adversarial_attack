@@ -47,6 +47,12 @@ class ResourceImporter:
             result = dill.load(p)
         return result
 
+    def import_pickle_to_list(self, path: Path) -> list:
+        self._validate_path(path=path, file_type=".pickle")
+        with path.open(mode="rb") as p:
+            result = dill.load(p)
+        return result
+
 
 class ResourceExporter:
     _supported_file_types = [".pickle"]
