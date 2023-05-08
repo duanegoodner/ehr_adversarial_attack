@@ -64,7 +64,7 @@ if __name__ == "__main__":
         num_samples=100,
         max_attempts_per_sample=100,
         max_successes_per_sample=1,
-        output_dir=Path(__file__).parent.parent / "data" / "attack_results_f48_02"
+        output_dir=Path(__file__).parent.parent / "data"
     )
 
     start = time.time()

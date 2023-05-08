@@ -10,6 +10,7 @@ from dataset_with_index import DatasetWithIndex
 from lstm_sun_2018_logit_out import LSTMSun2018Logit
 import resource_io as rio
 from single_sample_feature_perturber import SingleSampleFeaturePerturber
+from weighted_dataloader_builder import WeightedDataLoaderBuilder
 
 
 class AdversarialLoss(nn.Module):
@@ -52,6 +53,7 @@ class AdversarialExamplesSummary:
     num_nonzero_perturbation_elements: torch.tensor = None
     loss_vals: torch.tensor = None
     perturbations: torch.tensor = None
+    orig_labels: torch.tensor = None
     success_rates: list = None
     num_attempts: list = None
     num_successes: list = None
@@ -65,6 +67,8 @@ class AdversarialExamplesSummary:
             self.loss_vals = torch.FloatTensor()
         if self.perturbations is None:
             self.perturbations = torch.FloatTensor()
+        if self.orig_labels is None:
+            self.orig_labels = torch.LongTensor()
         if self.success_rates is None:
             self.success_rates = []
         if self.num_attempts is None:
@@ -77,6 +81,7 @@ class AdversarialExamplesSummary:
         index: torch.tensor,
         loss: torch.tensor,
         perturbation: torch.tensor,
+        orig_label: torch.tensor
     ):
         self.indices = torch.cat(
             (self.indices, index.detach().to("cpu")), dim=0
@@ -88,11 +93,15 @@ class AdversarialExamplesSummary:
             ),
             dim=0,
         )
+        self.orig_labels = torch.cat(
+            (self.orig_labels, orig_label.detach().to("cpu"))
+        )
         self.loss_vals = torch.cat((self.loss_vals, loss.detach().to("cpu")))
         self.perturbations = torch.cat(
             (self.perturbations, perturbation.detach().detach().to("cpu")),
             dim=0,
         )
+
 
     def record_success_rate(
         self, num_attempts: int, num_successes: int, success_rate: float
@@ -156,9 +165,13 @@ class AdversarialAttackTrainer:
         self._l1_beta = l1_beta
         self._learning_rate = learning_rate
         self.output_dir = output_dir
+        self._data_loader_builder = WeightedDataLoaderBuilder()
 
     def _build_single_sample_data_loader(self) -> DataLoader:
-        return DataLoader(dataset=self._dataset, batch_size=1, shuffle=True)
+        return self._data_loader_builder.build(
+            dataset=self._dataset, batch_size=1, labels_idx=2
+        )
+        # return DataLoader(dataset=self._dataset, batch_size=1, shuffle=True)
 
     def _l1_loss(self):
         return self._l1_beta * torch.norm(
@@ -243,6 +256,7 @@ class AdversarialAttackTrainer:
                     perturbation=self._attacker.feature_perturber.perturbation.detach().to(
                         "cpu"
                     ),
+                    orig_label=orig_label
                 )
             num_attempts += 1
             loss.backward()
@@ -278,6 +292,7 @@ class AdversarialAttackTrainer:
             )
             if num_batches > self.num_samples:
                 break
+        print("exporting summary")
         self._export_summary()
 
 
@@ -293,7 +308,7 @@ class AdvAttackExperimentRunner:
         samples_per_run: int,
         max_attempts_per_sample: int,
         max_successes_per_sample: int,
-        output_dir: Path
+        output_dir: Path,
     ):
         self.device = device
         self.attacker = attacker
@@ -320,10 +335,7 @@ class AdvAttackExperimentRunner:
                         num_samples=self.samples_per_run,
                         max_successes_per_sample=self.max_successes_per_sample,
                         max_attempts_per_sample=self.max_attempts_per_sample,
-                        output_dir=self.output_dir
+                        output_dir=self.output_dir,
                     )
 
                     trainer.train_attacker()
-
-
-

@@ -57,19 +57,110 @@ if __name__ == "__main__":
         logitout_model=my_logitout_model,
     )
 
+    # F48_01 (no weighted sampling)
+    # experiment_runner = AdvAttackExperimentRunner(
+    #     device=cur_device,
+    #     attacker=f48_m19_lstm_attacker,
+    #     dataset=correctly_predicted_data,
+    #     l1_beta_vals=[0.05, 0.1, 0.2],
+    #     learning_rates=[0.05, 0.1, 0.2],
+    #     kappa_vals=[0.0],
+    #     samples_per_run=100,
+    #     max_attempts_per_sample=100,
+    #     max_successes_per_sample=1,
+    #     output_dir=Path(__file__).parent.parent
+    #     / "data"
+    #     / "attack_results_f48_01",
+    # )
+
+
+    # F48_02 (with weighted_sampling)
+    # experiment_runner = AdvAttackExperimentRunner(
+    #     device=cur_device,
+    #     attacker=f48_m19_lstm_attacker,
+    #     dataset=correctly_predicted_data,
+    #     l1_beta_vals=[0.05, 0.1, 0.2],
+    #     learning_rates=[0.05, 0.1, 0.2],
+    #     kappa_vals=[0.0],
+    #     samples_per_run=100,
+    #     max_attempts_per_sample=100,
+    #     max_successes_per_sample=1,
+    #     output_dir=Path(__file__).parent.parent
+    #                / "data"
+    #                / "attack_results_f48_02",
+    # )
+    #
+    # experiment_runner.run_experiments()
+
+
+    # F48_03 (increase max successes to 3)
+    # experiment_runner = AdvAttackExperimentRunner(
+    #     device=cur_device,
+    #     attacker=f48_m19_lstm_attacker,
+    #     dataset=correctly_predicted_data,
+    #     l1_beta_vals=[0.05, 0.1, 0.2],
+    #     learning_rates=[0.05, 0.1, 0.2],
+    #     kappa_vals=[0.0],
+    #     samples_per_run=100,
+    #     max_attempts_per_sample=100,
+    #     max_successes_per_sample=3,
+    #     output_dir=Path(__file__).parent.parent
+    #                / "data"
+    #                / "attack_results_f48_03",
+    # )
+    #
+    # experiment_runner.run_experiments()
+
+    # F48_04 (increase max successes to 5, samples per run to 500)
+    # experiment_runner = AdvAttackExperimentRunner(
+    #     device=cur_device,
+    #     attacker=f48_m19_lstm_attacker,
+    #     dataset=correctly_predicted_data,
+    #     l1_beta_vals=[0.05, 0.1, 0.2],
+    #     learning_rates=[0.05, 0.1, 0.2],
+    #     kappa_vals=[0.0],
+    #     samples_per_run=500,
+    #     max_attempts_per_sample=100,
+    #     max_successes_per_sample=5,
+    #     output_dir=Path(__file__).parent.parent
+    #                / "data"
+    #                / "attack_results_f48_04",
+    # )
+    #
+    # experiment_runner.run_experiments()
+
+    # F48_05 (increase max successes to 5, samples per run to 1000; more l1_beta and lr vals)
+    # experiment_runner = AdvAttackExperimentRunner(
+    #     device=cur_device,
+    #     attacker=f48_m19_lstm_attacker,
+    #     dataset=correctly_predicted_data,
+    #     l1_beta_vals=[0, 0.05, 0.1, 0.2],
+    #     learning_rates=[0.01, 0.05, 0.1, 0.2],
+    #     kappa_vals=[0.0],
+    #     samples_per_run=1000,
+    #     max_attempts_per_sample=100,
+    #     max_successes_per_sample=1,
+    #     output_dir=Path(__file__).parent.parent
+    #                / "data"
+    #                / "attack_results_f48_05",
+    # )
+    #
+    # experiment_runner.run_experiments()
+
+    # F48_06 Now have orig label in output
     experiment_runner = AdvAttackExperimentRunner(
         device=cur_device,
         attacker=f48_m19_lstm_attacker,
         dataset=correctly_predicted_data,
-        l1_beta_vals=[0.05, 0.1, 0.2],
-        learning_rates=[0.05, 0.1, 0.2],
+        l1_beta_vals=[0, 0.05, 0.1, 0.2],
+        learning_rates=[0.01, 0.05, 0.1, 0.2],
         kappa_vals=[0.0],
-        samples_per_run=100,
+        samples_per_run=1000,
         max_attempts_per_sample=100,
         max_successes_per_sample=1,
         output_dir=Path(__file__).parent.parent
-        / "data"
-        / "attack_results_f48_01",
+                   / "data"
+                   / "attack_results_f48_05",
     )
 
     experiment_runner.run_experiments()

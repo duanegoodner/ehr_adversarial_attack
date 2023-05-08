@@ -13,12 +13,12 @@ class DataLoaderBuilder(ABC):
 
 class WeightedDataLoaderBuilder:
 
-    def __call__(self, dataset: Dataset, batch_size: int):
+    def __call__(self, dataset: Dataset, batch_size: int, labels_idx: int = 1):
         return self.build(dataset=dataset, batch_size=batch_size)
 
     @staticmethod
     def _build_weighted_random_sampler(
-        labels: torch.tensor,
+            labels: torch.tensor,
     ) -> WeightedRandomSampler:
         class_sample_counts = np.unique(labels, return_counts=True)[1]
         class_weights = 1.0 / class_sample_counts
@@ -27,8 +27,9 @@ class WeightedDataLoaderBuilder:
             weights=sample_weights, num_samples=len(sample_weights)
         )
 
-    def build(self, dataset: Dataset, batch_size: int) -> DataLoader:
-        labels = dataset[:][1]
+    def build(self, dataset: Dataset, batch_size: int,
+              labels_idx: int = 1) -> DataLoader:
+        labels = dataset[:][labels_idx]
         assert labels.dim() == 1
         assert not torch.is_floating_point(labels)
         assert not torch.is_complex(labels)
