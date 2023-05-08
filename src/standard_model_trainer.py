@@ -39,7 +39,7 @@ class StandardModelTrainer:
         loss_fn: nn.Module,
         optimizer: torch.optim.Optimizer,
         save_checkpoints: bool,
-        checkpoint_dir: Path,
+        checkpoint_dir: Path = None,
         checkpoint_interval: int = 100,
     ):
         self.model = model
@@ -100,9 +100,10 @@ class StandardModelTrainer:
 
     def train_model(
         self,
-        train_dataloader: ud.DataLoader,
-        test_dataloader: ud.DataLoader,
         num_epochs: int,
+        train_dataloader: ud.DataLoader,
+        test_dataloader: ud.DataLoader | None = None,
+        loss_log: list = None,
     ):
         self.model.train()
 
@@ -119,10 +120,16 @@ class StandardModelTrainer:
                 self.optimizer.step()
                 running_loss += loss.item()
             epoch_loss = running_loss / (num_batches + 1)
+            # TODO move reporting work to separate method(s)
+            if loss_log is not None:
+                loss_log.append(epoch_loss)
             print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {epoch_loss:.4f}")
             if (
-                (epoch + 1) % self.checkpoint_interval == 0
-            ) and self.save_checkpoints:
+                ((epoch + 1) % self.checkpoint_interval == 0)
+                and self.save_checkpoints
+                and (test_dataloader is not None)
+                and (self.checkpoint_dir is not None)
+            ):
                 self.eval_model_and_save_checkpoint(
                     epoch_num=epoch,
                     epoch_loss=epoch_loss,
