@@ -36,8 +36,6 @@ class StandardModelTrainer:
     def __init__(
         self,
         model: stc.StandardTrainableClassifier,
-        train_dataloader: ud.DataLoader,
-        test_dataloader: ud.DataLoader,
         loss_fn: nn.Module,
         optimizer: torch.optim.Optimizer,
         save_checkpoints: bool,
@@ -45,8 +43,6 @@ class StandardModelTrainer:
         checkpoint_interval: int = 100,
     ):
         self.model = model
-        self.train_dataloader = train_dataloader
-        self.test_dataloader = test_dataloader
         self.loss_fn = loss_fn
         self.optimizer = optimizer
         self.save_checkpoints = save_checkpoints
@@ -94,20 +90,25 @@ class StandardModelTrainer:
         torch.save(obj=output_object, f=output_path)
 
     def eval_model_and_save_checkpoint(
-        self, epoch_num: int, epoch_loss: float
+        self, epoch_num: int, epoch_loss: float, test_dataloader: ud.DataLoader
     ):
-        metrics = self.evaluate_model()
+        metrics = self.evaluate_model(test_dataloader=test_dataloader)
         self.save_checkpoint(
             epoch_num=epoch_num, loss=epoch_loss, metrics=metrics
         )
         self.model.train()
 
-    def train_model(self, num_epochs: int):
+    def train_model(
+        self,
+        train_dataloader: ud.DataLoader,
+        test_dataloader: ud.DataLoader,
+        num_epochs: int,
+    ):
         self.model.train()
 
         for epoch in range(num_epochs):
             running_loss = 0.0
-            for num_batches, (x, y) in enumerate(self.train_dataloader):
+            for num_batches, (x, y) in enumerate(train_dataloader):
                 x, y = x.to(self.model.model_device), y.to(
                     self.model.model_device
                 )
@@ -123,16 +124,18 @@ class StandardModelTrainer:
                 (epoch + 1) % self.checkpoint_interval == 0
             ) and self.save_checkpoints:
                 self.eval_model_and_save_checkpoint(
-                    epoch_num=epoch, epoch_loss=epoch_loss
+                    epoch_num=epoch,
+                    epoch_loss=epoch_loss,
+                    test_dataloader=test_dataloader,
                 )
 
     @torch.no_grad()
-    def evaluate_model(self):
+    def evaluate_model(self, test_dataloader: ud.DataLoader):
         self.model.eval()
         all_y_true = torch.LongTensor()
         all_y_pred = torch.LongTensor()
         all_y_score = torch.FloatTensor()
-        for x, y in self.test_dataloader:
+        for x, y in test_dataloader:
             x, y = x.to(self.model.model_device), y.to(self.model.model_device)
             y_hat = self.model(x)
             y_pred = self.interpret_output(model_output=y_hat)
@@ -157,8 +160,8 @@ if __name__ == "__main__":
     cur_model = LSTMSun2018(model_device=cur_device)
     trainer = StandardModelTrainer(
         model=cur_model,
-        train_dataloader=data_loader,
-        test_dataloader=data_loader,
+        # train_dataloader=data_loader,
+        # test_dataloader=data_loader,
         loss_fn=nn.CrossEntropyLoss(),
         optimizer=torch.optim.Adam(
             params=cur_model.parameters(), lr=1e-4, betas=(0.5, 0.999)
@@ -170,5 +173,5 @@ if __name__ == "__main__":
         / "troubleshooting_runs",
     )
 
-    trainer.train_model(num_epochs=3)
-    trainer.evaluate_model()
+    trainer.train_model(train_dataloader=data_loader, num_epochs=3)
+    trainer.evaluate_model(test_dataloader=data_loader)

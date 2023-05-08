@@ -7,6 +7,7 @@ from lstm_model_stc import LSTMSun2018
 from standard_model_trainer import StandardModelTrainer
 from weighted_dataloader_builder import WeightedDataLoaderBuilder
 from x19_mort_dataset import X19MortalityDataset
+from dataset_full48_m19 import Full48M19Dataset
 
 
 def main():
@@ -15,7 +16,8 @@ def main():
     else:
         cur_device = torch.device("cpu")
 
-    dataset = X19MortalityDataset()
+    # dataset = X19MortalityDataset()
+    dataset = Full48M19Dataset.from_feature_finalizer_output()
 
     model = LSTMSun2018(model_device=cur_device)
 
@@ -33,20 +35,24 @@ def main():
 
     trainer = StandardModelTrainer(
         model=model,
-        train_dataloader=train_dataloader,
-        test_dataloader=test_dataloader,
+        # train_dataloader=train_dataloader,
+        # test_dataloader=test_dataloader,
         loss_fn=nn.CrossEntropyLoss(),
         optimizer=torch.optim.Adam(
             params=model.parameters(), lr=1e-4, betas=(0.5, 0.999)
         ),
         save_checkpoints=True,
-        checkpoint_dir=Path("/home/duane/dproj/UIUC-DLH/project"
-                            "/ehr_adversarial_attack/data"
-                            "/train_lstm_sun2018_02"),
-        checkpoint_interval=10
+        checkpoint_dir=Path(
+            "/data/train_lstm_sun2018_Full48M19Dataset"
+        ),
+        checkpoint_interval=10,
     )
 
-    trainer.train_model(num_epochs=3000)
+    trainer.train_model(
+        train_dataloader=train_dataloader,
+        test_dataloader=test_dataloader,
+        num_epochs=3000,
+    )
 
 
 if __name__ == "__main__":
