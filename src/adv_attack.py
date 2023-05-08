@@ -1,4 +1,6 @@
+from datetime import datetime
 import numpy as np
+import time
 import torch
 import torch.nn as nn
 from dataclasses import dataclass
@@ -6,6 +8,7 @@ from pathlib import Path
 from torch.utils.data import DataLoader
 from dataset_with_index import DatasetWithIndex
 from lstm_sun_2018_logit_out import LSTMSun2018Logit
+import resource_io as rio
 from single_sample_feature_perturber import SingleSampleFeaturePerturber
 
 
@@ -49,6 +52,9 @@ class AdversarialExamplesSummary:
     num_nonzero_perturbation_elements: torch.tensor = None
     loss_vals: torch.tensor = None
     perturbations: torch.tensor = None
+    success_rates: list = None
+    num_attempts: list = None
+    num_successes: list = None
 
     def __post_init__(self):
         if self.indices is None:
@@ -59,6 +65,12 @@ class AdversarialExamplesSummary:
             self.loss_vals = torch.FloatTensor()
         if self.perturbations is None:
             self.perturbations = torch.FloatTensor()
+        if self.success_rates is None:
+            self.success_rates = []
+        if self.num_attempts is None:
+            self.num_attempts = []
+        if self.num_successes is None:
+            self.num_successes = []
 
     def update(
         self,
@@ -82,6 +94,13 @@ class AdversarialExamplesSummary:
             dim=0,
         )
 
+    def record_success_rate(
+        self, num_attempts: int, num_successes: int, success_rate: float
+    ):
+        self.num_attempts.append(num_attempts)
+        self.num_successes.append(num_successes)
+        self.success_rates.append(success_rate)
+
     @property
     def samples_with_adv_example(self) -> np.ndarray:
         return np.unique(self.indices)
@@ -89,6 +108,18 @@ class AdversarialExamplesSummary:
     @property
     def num_samples_with_adv_example(self) -> int:
         return self.samples_with_adv_example.shape[0]
+
+    @property
+    def global_num_attempts(self):
+        return sum(self.num_attempts)
+
+    @property
+    def global_num_successes(self):
+        return sum(self.num_successes)
+
+    @property
+    def global_success_rate(self):
+        return self.global_num_successes / self.global_num_attempts
 
 
 class AdversarialAttackTrainer:
@@ -100,12 +131,17 @@ class AdversarialAttackTrainer:
         learning_rate: float,
         kappa: float,
         l1_beta: float,
-        epochs_per_batch: int,
+        num_samples: int,
+        max_attempts_per_sample: int,
+        max_successes_per_sample: int,
+        output_dir: Path,
         adv_examples_summary: AdversarialExamplesSummary = None,
     ):
         self._device = device
         self._attacker = attacker
-        self._epochs_per_batch = epochs_per_batch
+        self.num_samples = num_samples
+        self._max_attempts_per_sample = max_attempts_per_sample
+        self.max_successes_per_sample = max_successes_per_sample
         if adv_examples_summary is None:
             adv_examples_summary = AdversarialExamplesSummary(dataset=dataset)
         self.adv_examples_summary = adv_examples_summary
@@ -118,9 +154,11 @@ class AdversarialAttackTrainer:
             self._device
         )
         self._l1_beta = l1_beta
+        self._learning_rate = learning_rate
+        self.output_dir = output_dir
 
     def _build_single_sample_data_loader(self) -> DataLoader:
-        return DataLoader(dataset=self._dataset, batch_size=1, shuffle=False)
+        return DataLoader(dataset=self._dataset, batch_size=1, shuffle=True)
 
     def _l1_loss(self):
         return self._l1_beta * torch.norm(
@@ -180,7 +218,11 @@ class AdversarialAttackTrainer:
         orig_features, correct_label = orig_features.to(
             self._device
         ), orig_label.to(self._device)
-        for epoch in range(self._epochs_per_batch):
+        num_successful_attacks = 0
+        num_attempts = 0
+        for epoch in range(self._max_attempts_per_sample):
+            if num_successful_attacks >= self.max_successes_per_sample:
+                break
             self._optimizer.zero_grad()
             perturbed_features, logits = self._attacker(orig_features)
             loss = (
@@ -194,6 +236,7 @@ class AdversarialAttackTrainer:
             if (logits[0][int(not orig_label)] - self._kappa) > logits[0][
                 orig_label
             ]:
+                num_successful_attacks += 1
                 self.adv_examples_summary.update(
                     index=idx,
                     loss=loss,
@@ -201,16 +244,86 @@ class AdversarialAttackTrainer:
                         "cpu"
                     ),
                 )
+            num_attempts += 1
             loss.backward()
             self._optimizer.step()
             self._apply_bounded_soft_threshold(orig_features=orig_features)
+        self.adv_examples_summary.record_success_rate(
+            num_attempts=num_attempts,
+            num_successes=num_successful_attacks,
+            success_rate=num_successful_attacks / num_attempts,
+        )
+
+    def _export_summary(self):
+        filename = (
+            f"k{self._kappa.item()}-l1{self._l1_beta}-lr{self._learning_rate}-"
+            f"ma{self._max_attempts_per_sample}-"
+            f"ms{self.max_successes_per_sample}-"
+            f"{datetime.now()}.pickle".replace(" ", "_")
+        )
+        exporter = rio.ResourceExporter()
+        exporter.export(self.adv_examples_summary, self.output_dir / filename)
 
     def train_attacker(self):
         dataloader = self._build_single_sample_data_loader()
         self._set_attacker_to_train_mode()
+        start_time = time.time()
         for num_batches, (idx, orig_features, orig_label) in enumerate(
             dataloader
         ):
+            print(f"Elapsed time = {time.time() - start_time} sec")
+            print(f"Attacking sample {idx.item()}")
             self._attack_batch(
                 idx=idx, orig_features=orig_features, orig_label=orig_label
             )
+            if num_batches > self.num_samples:
+                break
+        self._export_summary()
+
+
+class AdvAttackExperimentRunner:
+    def __init__(
+        self,
+        device: torch.device,
+        attacker: AdversarialAttacker,
+        dataset: DatasetWithIndex,
+        l1_beta_vals: list[float],
+        learning_rates: list[float],
+        kappa_vals: list[float],
+        samples_per_run: int,
+        max_attempts_per_sample: int,
+        max_successes_per_sample: int,
+        output_dir: Path
+    ):
+        self.device = device
+        self.attacker = attacker
+        self.dataset = dataset
+        self.l1_beta_vals = l1_beta_vals
+        self.learning_rates = learning_rates
+        self.kapa_vals = kappa_vals
+        self.samples_per_run = samples_per_run
+        self.max_attempts_per_sample = max_attempts_per_sample
+        self.max_successes_per_sample = max_successes_per_sample
+        self.output_dir = output_dir
+
+    def run_experiments(self):
+        for l1_beta in self.l1_beta_vals:
+            for learning_rate in self.learning_rates:
+                for kappa in self.kapa_vals:
+                    trainer = AdversarialAttackTrainer(
+                        device=self.device,
+                        attacker=self.attacker,
+                        dataset=self.dataset,
+                        learning_rate=learning_rate,
+                        kappa=kappa,
+                        l1_beta=l1_beta,
+                        num_samples=self.samples_per_run,
+                        max_successes_per_sample=self.max_successes_per_sample,
+                        max_attempts_per_sample=self.max_attempts_per_sample,
+                        output_dir=self.output_dir
+                    )
+
+                    trainer.train_attacker()
+
+
+

@@ -8,7 +8,7 @@ from lstm_sun_2018_logit_out import LSTMSun2018Logit
 from single_sample_feature_perturber import SingleSampleFeaturePerturber
 from standard_model_inferrer import StandardModelInferrer
 from dataset_full48_m19 import Full48M19DatasetWithIndex
-
+from adv_attack import AdvAttackExperimentRunner
 
 if __name__ == "__main__":
     if torch.cuda.is_available():
@@ -28,7 +28,9 @@ if __name__ == "__main__":
     )
 
     # Run data through pretrained model & get all correctly predicted samples
-    full_dataset = Full48M19DatasetWithIndex.from_feature_finalizer_output()
+    full_dataset = (
+        Full48M19DatasetWithIndex.from_feature_finalizer_output()
+    )
     inferrer = StandardModelInferrer(
         model=pretrained_full_model, dataset=full_dataset
     )
@@ -45,7 +47,8 @@ if __name__ == "__main__":
 
     # Instantiate feature perturber
     my_feature_perturber = SingleSampleFeaturePerturber(
-        device=cur_device, feature_dims=(1, *tuple(full_dataset[0][1].shape))
+        device=cur_device,
+        feature_dims=(1, *tuple(full_dataset[0][1].shape)),
     )
 
     f48_m19_lstm_attacker = AdversarialAttacker(
@@ -54,21 +57,19 @@ if __name__ == "__main__":
         logitout_model=my_logitout_model,
     )
 
-    trainer = AdversarialAttackTrainer(
+    experiment_runner = AdvAttackExperimentRunner(
         device=cur_device,
         attacker=f48_m19_lstm_attacker,
         dataset=correctly_predicted_data,
-        learning_rate=0.1,
-        kappa=0,
-        l1_beta=0.15,
-        num_samples=100,
+        l1_beta_vals=[0.05, 0.1, 0.2],
+        learning_rates=[0.05, 0.1, 0.2],
+        kappa_vals=[0.0],
+        samples_per_run=100,
         max_attempts_per_sample=100,
         max_successes_per_sample=1,
-        output_dir=Path(__file__).parent.parent / "data" / "attack_results_f48_02"
+        output_dir=Path(__file__).parent.parent
+        / "data"
+        / "attack_results_f48_01",
     )
 
-    start = time.time()
-    trainer.train_attacker()
-    end = time.time()
-
-    print(f"Total time for attack: {end - start}")
+    experiment_runner.run_experiments()
