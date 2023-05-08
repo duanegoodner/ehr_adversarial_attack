@@ -32,7 +32,7 @@ class ResourceImporter:
         assert file_type == file_extension
 
     def import_csv(self, path: Path) -> pd.DataFrame:
-        self._validate_path(path=path, file_type=".csv" )
+        self._validate_path(path=path, file_type=".csv")
         return pd.read_csv(path)
 
     def import_pickle_to_df(self, path: Path) -> pd.DataFrame:
