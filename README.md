@@ -50,110 +50,21 @@ Run file `src/adv_attack_full48_m19.py`. With current settings, this will run ad
 
 ### 4. Plot results of the adversarial attacks
 
+Run file `src/attack_results_analyzer.py` to produce plots of the attack susceptibilities vs. time for each of the 19 measurement parameters.
 
 
 
+## Key Results
 
- 
 
 
 
-All of the procedures described below have already been run, and their outputs have been saved in files as noted. If you just want to plot the results of adversarial attacks on a trained model you can skip to the Attack Analysis section.
 
-### A. Building a Local MIMIC-III Database
+![](https://github.com/duanegoodner/ehr_adversarial_attack/blob/main/data/images/Table.png)
 
-1. Create directory `mimiciii_raw/csv/` under the `ehr_adversarial_attack` root directory.
 
-2. If you do not have a physionet account and/or "credentialed" physionet access, you go [here](https://physionet.org/register/) and [here](https://physionet.org/settings/credentialing/) to obtain them.
 
-2.  Follow the instructions at https://physionet.org/content/mimiciii/1.4/ to download the database .gz. 
-
-3. Extrac all of the .gz files into .csv files. Place the extracted .csv files in `ehr_adversarial_attack/mimiciii_raw/csv/`
-
-4. From directory `ehr_adversarial_attack/src/docker_db/` run the commands:
-
-   ````
-   $ docker compose build
-   $ docker compose up
-   ````
-
-   Running `docker compose up` will start a Docker container that will build a MIMIC-III database (inside the container). This will likely take ~30 minutes.
-
-5.  From directory `ehr_adversarial_attack/src/docker_db/` run:
-
-   ```
-   $ ./run_queries.sh
-   ```
-
-   
-
-
-
-This section describes the full procedure necessary to obtain the dataset, pre-process data, train the LSTM model, perform adversarial attacks, and view the results of these attacks. Each of these steps have already run, and their outputs have been saved in files noted below.
-
-### Building a Local MIMIC-III Database
-
-
-
-### Pre-processing
-
-
-
-
-
-## Training the LSTM Model
-
-
-
-
-
-## Dataset
-
-This work uses a subset of the MIMIC-III Clinical Database. The database queries and additional preprocessing steps necessary to prepare data for input into the LSTM model have already been performed, 
-
-
-
-
-
-
-
-
-
-Data Preprocessing Details
-
-The following preprocessing steps have already been perfomed to produce files needed for model training input. (So you don't need to run them, but leaving the steps here for documentation)
-
-and converted to the feature and label tensors needed for the LSTM model and saved as files `measurement_data_list.pickle ` and `in_hospital_mortality_list.pickle` in directory ``ehr_adversarial_attack/data/output_feature_finalizer/`.
-
-
-
-The queries providing the necessary tables and views from MIMIC-III have already been run (by creating a PostgreSQL database inside a Docker container defined ``` ), and their output is saved in `ehr_adversarial_attack/mimiciii_query_results/`. The data have been further processed into feature and response 
-
-* 
-
-* Building a local MIMIC-III datablase:
-
-  1. 
-
-  2. 
-
-  
-
-Preprocessing
-
-
-
-Training
-
-
-
-Results
-
-
-
-
-
-
+![](https://github.com/duanegoodner/ehr_adversarial_attack/blob/main/data/images/plots.png)
 
 
 
