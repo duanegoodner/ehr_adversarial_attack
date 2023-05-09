@@ -18,9 +18,11 @@ if __name__ == "__main__":
 
     # Instantiate a full model and load pretrained parameters
     pretrained_full_model = LSTMSun2018(model_device=cur_device)
-    checkpoint_path = Path(
-        "/home/duane/dproj/UIUC-DLH/project/ehr_adversarial_attack/data"
-        "/cross_validate_sun2018_full48m19_01/2023-05-07_23:32:09.938445.tar"
+
+    checkpoint_path = (
+        Path(__file__).parent.parent
+        / "data"
+        / "cross_validate_sun2018_full48m19_01/2023-05-07_23:32:09.938445.tar"
     )
     checkpoint = torch.load(checkpoint_path)
     pretrained_full_model.load_state_dict(
