@@ -135,8 +135,7 @@ class AttackResultsAnalyzer:
         features: torch.tensor,
         x_label: str,
         y_label: str,
-        plot_title: str,
-        save_path: Path
+        plot_title: str
     ):
         fig, ax = plt.subplots(1, 1)
         meas_times = torch.arange(0, 48)
@@ -149,7 +148,6 @@ class AttackResultsAnalyzer:
         ax.set_title(plot_title)
         ax.legend(bbox_to_anchor=(1.35, 0.5), loc="right")
         fig.subplots_adjust(right=0.75)
-        plt.savefig(save_path)
 
         plt.show()
 
