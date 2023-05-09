@@ -32,9 +32,9 @@ def main():
         epochs_per_fold=25,
         max_global_epochs=8,
         save_checkpoints=True,
-        checkpoints_dir=Path("/home/duane/dproj/UIUC-DLH/project"
-                             "/ehr_adversarial_attack/data"
-                             "/cross_validate_sun2018_full48m19_01")
+        checkpoints_dir=Path(__file__).parent.parent
+        / "data"
+        / "cross_validate_sun2018_full48m19_01",
     )
 
     cross_validator.run()
