@@ -56,13 +56,13 @@ Run file `src/attack_results_analyzer.py` to produce plots of the attack suscept
 
 ## Key Results
 
-
-
-
+The table below indicates that in our study, we were unable to reproduce the attack susceptibilities reported in the original paper.
 
 ![](https://github.com/duanegoodner/ehr_adversarial_attack/blob/main/data/images/Table.png)
 
 
+
+These plots also do NOT show the increase in susceptibility at later measurement times that were reported in the original paper.
 
 ![](https://github.com/duanegoodner/ehr_adversarial_attack/blob/main/data/images/plots.png)
 
