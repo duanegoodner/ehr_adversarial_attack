@@ -151,12 +151,12 @@ class AttackResultsAnalyzer:
         fig.subplots_adjust(right=0.75)
         plt.savefig(save_path)
 
-        # plt.show()
+        plt.show()
 
 
 analyzer = AttackResultsAnalyzer(
     result_path=Path(__file__).parent.parent
-    / "data"
+    / "data" / "attack_results_f48_00"
     / "k0.0-l10.15-lr0.1-ma100-ms1-2023-05-08_12:50:56.385216.pickle"
 )
 
@@ -164,15 +164,13 @@ analyzer.plot_time_series_overlays(
     features=analyzer.mean_abs_oz_perts,
     x_label="Elapsed time (hours) after ICU admission",
     y_label="Attack susceptibility",
-    plot_title="1-to-0 attack susceptibility",
-    save_path=Path(__file__).parent.parent / "data" / "o_to_z.png"
+    plot_title="1-to-0 attack susceptibility"
 )
 
 analyzer.plot_time_series_overlays(
     features=analyzer.mean_abs_zo_perts,
     x_label="Elapsed time (hours) after ICU admission",
     y_label="Attack susceptibility",
-    plot_title="0-to-1 attack susceptibility",
-    save_path=plt.savefig(Path(__file__).parent.parent / "data" / "z_to_o.png")
+    plot_title="0-to-1 attack susceptibility"
 )
 

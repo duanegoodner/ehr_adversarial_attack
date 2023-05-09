@@ -39,9 +39,7 @@ if __name__ == "__main__":
 
     # Instantiate version of model that stops at logit output
     my_logitout_model = LSTMSun2018Logit(model_device=cur_device)
-    my_logitout_model.load_state_dict(
-        checkpoint["state_dict"], strict=False
-    )
+    my_logitout_model.load_state_dict(checkpoint["state_dict"], strict=False)
 
     # Instantiate feature perturber
     my_feature_perturber = SingleSampleFeaturePerturber(
@@ -61,10 +59,12 @@ if __name__ == "__main__":
         learning_rate=0.1,
         kappa=0,
         l1_beta=0.15,
-        num_samples=100,
+        num_samples=1000,
         max_attempts_per_sample=100,
         max_successes_per_sample=1,
-        output_dir=Path(__file__).parent.parent / "data"
+        output_dir=Path(__file__).parent.parent
+        / "data"
+        / "attack_results_f48_00",
     )
 
     start = time.time()
