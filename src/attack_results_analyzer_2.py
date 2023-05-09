@@ -1,4 +1,5 @@
 import dill
+import matplotlib.pyplot as plt
 import numpy as np
 import torch as torch
 from functools import cached_property
@@ -14,7 +15,10 @@ def import_pickle_to_adv_example_summary(
     return result
 
 
-
+def import_pickle_to_tuple(path: Path) -> tuple:
+    with path.open(mode="rb") as p:
+        result = dill.load(p)
+    return result
 
 
 class AttackResultsAnalyzer:
@@ -55,6 +59,14 @@ class AttackResultsAnalyzer:
         return torch.abs(self.zo_perts)
 
     @cached_property
+    def mean_abs_oz_perts(self) -> torch.tensor:
+        return torch.mean(self.abs_oz_perts, dim=0)
+
+    @cached_property
+    def mean_abs_zo_perts(self) -> torch.tensor:
+        return torch.mean(self.abs_zo_perts, dim=0)
+
+    @cached_property
     def gmp_ij_oz(self) -> torch.tensor:
         return torch.max(self.abs_oz_perts, dim=0).values
 
@@ -72,11 +84,11 @@ class AttackResultsAnalyzer:
 
     @cached_property
     def gpp_ij_oz(self) -> torch.tensor:
-        return torch.norm(self.abs_oz_perts, p=1,  dim=0) / self.num_oz_perts
+        return torch.norm(self.abs_oz_perts, p=1, dim=0) / self.num_oz_perts
 
     @cached_property
     def gpp_ij_zo(self) -> torch.tensor:
-        return torch.norm(self.abs_zo_perts, p=1,  dim=0) / self.num_zo_perts
+        return torch.norm(self.abs_zo_perts, p=1, dim=0) / self.num_zo_perts
 
     @cached_property
     def s_ij_oz(self) -> torch.tensor:
@@ -94,9 +106,73 @@ class AttackResultsAnalyzer:
     def s_j_zo(self) -> torch.tensor:
         return torch.sum(self.s_ij_zo, dim=1)
 
+    @property
+    def col_names(self) -> list[str]:
+        return [
+            "K",
+            "Ca",
+            "PH",
+            "PaCO2",
+            "Lactate",
+            "Albumin",
+            "BUN",
+            "Cre",
+            "Na",
+            "HCO3",
+            "Platelets",
+            "Glc",
+            "Mg",
+            "HR",
+            "SBP",
+            "DBP",
+            "TEMP",
+            "RR",
+            "SPO2",
+        ]
+
+    def plot_time_series_overlays(
+        self,
+        features: torch.tensor,
+        x_label: str,
+        y_label: str,
+        plot_title: str,
+        save_path: Path
+    ):
+        fig, ax = plt.subplots(1, 1)
+        meas_times = torch.arange(0, 48)
+        for meas_idx in range(features.shape[0]):
+            ax.plot(
+                meas_times, features[meas_idx], label=self.col_names[meas_idx]
+            )
+        ax.set_xlabel(xlabel=x_label)
+        ax.set_ylabel(ylabel=y_label)
+        ax.set_title(plot_title)
+        ax.legend(bbox_to_anchor=(1.35, 0.5), loc="right")
+        fig.subplots_adjust(right=0.75)
+        plt.savefig(save_path)
+
+        # plt.show()
+
 
 analyzer = AttackResultsAnalyzer(
     result_path=Path(__file__).parent.parent
     / "data"
     / "k0.0-l10.15-lr0.1-ma100-ms1-2023-05-08_12:50:56.385216.pickle"
 )
+
+analyzer.plot_time_series_overlays(
+    features=analyzer.mean_abs_oz_perts,
+    x_label="Elapsed time (hours) after ICU admission",
+    y_label="Attack susceptibility",
+    plot_title="1-to-0 attack susceptibility",
+    save_path=Path(__file__).parent.parent / "data" / "o_to_z.png"
+)
+
+analyzer.plot_time_series_overlays(
+    features=analyzer.mean_abs_zo_perts,
+    x_label="Elapsed time (hours) after ICU admission",
+    y_label="Attack susceptibility",
+    plot_title="0-to-1 attack susceptibility",
+    save_path=plt.savefig(Path(__file__).parent.parent / "data" / "z_to_o.png")
+)
+

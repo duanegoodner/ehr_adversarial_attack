@@ -10,6 +10,7 @@ from x19_mort_dataset import X19MortalityDataset
 from dataset_full48_m19 import Full48M19Dataset
 
 
+
 def main():
     if torch.cuda.is_available():
         cur_device = torch.device("cuda:0")
@@ -43,7 +44,7 @@ def main():
         ),
         save_checkpoints=True,
         checkpoint_dir=Path(
-            "/data/train_lstm_sun2018_Full48M19Dataset"
+            "/home/duane/dproj/UIUC-DLH/project/ehr_adversarial_attack/data"
         ),
         checkpoint_interval=10,
     )
