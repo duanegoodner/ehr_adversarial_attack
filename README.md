@@ -7,9 +7,19 @@
 
 This project aims to reproduce results originally published in:
 
-Sun, M., Tang, F., Yi, J., Wang, F., & Zhou, J. (2018, July). Identify susceptible locations in medical records via adversarial attacks on deep predictive models. In *Proceedings of the 24th ACM SIGKDD international conference on knowledge discovery & data mining* (pp. 793-801). (https://arxiv.org/abs/1802.04822)
+Sun, M., Tang, F., Yi, J., Wang, F. and Zhou, J., 2018, July. Identify susceptible locations in medical records via adversarial attacks on deep predictive models. In *Proceedings of the 24th ACM SIGKDD international conference on knowledge discovery & data mining* (pp. 793-801).  (https://arxiv.org/abs/1802.04822)
 
 The original paper trained a Long Short-Term Memory (LSTM) model using time series of Intensive Care Unit (ICU) patient vital-sign and lab measurements as the inputs, and in-hospital mortality as the prediction target. An adversarial attack algorithm was then used to identify small perturbations which, when applied to a real, correctly-classified input sample, result in misclassification of the perturbed input. Susceptibility calculations were then performed to quantify the attack vulnerability as functions of time and the measurement type within the input feature space.
+
+
+
+## Original Paper Code Repository
+
+The original authors did not publish a code repository for this particular work, but some of the authors reported on predictive modeling (but not adversarial attack) with a similar LSTM in:
+
+Tang, F., Xiao, C., Wang, F. and Zhou, J., 2018. Predictive modeling in urgent care: a comparative study of machine learning approaches. *Jamia Open*, *1*(1), pp.87-98.
+
+The repository for this paper is available at: https://github.com/illidanlab/urgent-care-comparative
 
 
 
