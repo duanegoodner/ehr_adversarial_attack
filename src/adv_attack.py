@@ -278,6 +278,8 @@ class AdversarialAttackTrainer:
         exporter = rio.ResourceExporter()
         exporter.export(self.adv_examples_summary, self.output_dir / filename)
 
+        return self.output_dir / filename
+
     def train_attacker(self):
         dataloader = self._build_single_sample_data_loader()
         self._set_attacker_to_train_mode()
@@ -292,8 +294,8 @@ class AdversarialAttackTrainer:
             )
             if num_batches > self.num_samples:
                 break
-        print("exporting summary")
-        self._export_summary()
+        output_file_path = self._export_summary()
+        print(f"Attack summary data saved in {output_file_path.name}")
 
 
 class AdvAttackExperimentRunner:

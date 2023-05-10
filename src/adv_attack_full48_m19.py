@@ -1,3 +1,4 @@
+import argparse
 import time
 import torch
 from pathlib import Path
@@ -11,6 +12,23 @@ from dataset_full48_m19 import Full48M19DatasetWithIndex
 
 
 if __name__ == "__main__":
+    cur_parser = argparse.ArgumentParser()
+    cur_parser.add_argument(
+        "-f",
+        "--params_filename",
+        type=str,
+        nargs="?",
+        action="store",
+        help=(
+            "Filename (not full path) of .tar file containing model "
+            "parameters for LSTMSun2018 model. File needs to be in directory"
+            "ehr_adversarial_attack/data/cross_validate_sun2018_full48m19_01."
+        ),
+    )
+    args_namespace = cur_parser.parse_args()
+    params_dir = Path(__file__).parent.parent / "data" / "cross_validate_sun2018_full48m19_01"
+    params_file_path = params_dir / args_namespace.params_filename
+
     if torch.cuda.is_available():
         cur_device = torch.device("cuda:0")
     else:
@@ -18,13 +36,7 @@ if __name__ == "__main__":
 
     # Instantiate a full model and load pretrained parameters
     pretrained_full_model = LSTMSun2018(model_device=cur_device)
-
-    checkpoint_path = (
-        Path(__file__).parent.parent
-        / "data"
-        / "cross_validate_sun2018_full48m19_01/2023-05-07_23:32:09.938445.tar"
-    )
-    checkpoint = torch.load(checkpoint_path)
+    checkpoint = torch.load(params_file_path)
     pretrained_full_model.load_state_dict(
         checkpoint["state_dict"], strict=False
     )
@@ -68,9 +80,6 @@ if __name__ == "__main__":
         / "data"
         / "attack_results_f48_00",
     )
-
-    start = time.time()
     trainer.train_attacker()
-    end = time.time()
 
-    print(f"Total time for attack: {end - start}")
+

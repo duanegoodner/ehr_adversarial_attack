@@ -1,3 +1,5 @@
+import argparse
+
 import dill
 import matplotlib.pyplot as plt
 import numpy as np
@@ -135,7 +137,7 @@ class AttackResultsAnalyzer:
         features: torch.tensor,
         x_label: str,
         y_label: str,
-        plot_title: str
+        plot_title: str,
     ):
         fig, ax = plt.subplots(1, 1)
         meas_times = torch.arange(0, 48)
@@ -152,23 +154,40 @@ class AttackResultsAnalyzer:
         plt.show()
 
 
-analyzer = AttackResultsAnalyzer(
-    result_path=Path(__file__).parent.parent
-    / "data" / "attack_results_f48_00"
-    / "k0.0-l10.15-lr0.1-ma100-ms1-2023-05-08_12:50:56.385216.pickle"
-)
+if __name__ == "__main__":
+    cur_parser = argparse.ArgumentParser()
+    cur_parser.add_argument(
+        "-f",
+        "--attack_summary_file",
+        type=str,
+        nargs="?",
+        action="store",
+        help=(
+            "Filename (not full path) .pickle file containing attack summary"
+            " object."
+        ),
+    )
+    args_namespace = cur_parser.parse_args()
+    attack_results_dir = (
+        Path(__file__).parent.parent / "data" / "attack_results_f48_00"
+    )
 
-analyzer.plot_time_series_overlays(
-    features=analyzer.mean_abs_oz_perts,
-    x_label="Elapsed time (hours) after ICU admission",
-    y_label="Attack susceptibility",
-    plot_title="1-to-0 attack susceptibility"
-)
+    summary_file_path = (
+        attack_results_dir / args_namespace.attack_summary_file
+    )
 
-analyzer.plot_time_series_overlays(
-    features=analyzer.mean_abs_zo_perts,
-    x_label="Elapsed time (hours) after ICU admission",
-    y_label="Attack susceptibility",
-    plot_title="0-to-1 attack susceptibility"
-)
+    analyzer = AttackResultsAnalyzer(result_path=summary_file_path)
 
+    analyzer.plot_time_series_overlays(
+        features=analyzer.mean_abs_oz_perts,
+        x_label="Elapsed time (hours) after ICU admission",
+        y_label="Attack susceptibility",
+        plot_title="1-to-0 attack susceptibility",
+    )
+
+    analyzer.plot_time_series_overlays(
+        features=analyzer.mean_abs_zo_perts,
+        x_label="Elapsed time (hours) after ICU admission",
+        y_label="Attack susceptibility",
+        plot_title="0-to-1 attack susceptibility",
+    )

@@ -97,9 +97,10 @@ class CrossValidator:
         metrics = self.trainer.evaluate_model(
             test_dataloader=self.full_dataloader
         )
-        self.trainer.save_checkpoint(
+        final_checkpoint = self.trainer.save_checkpoint(
             epoch_num=self.max_global_epochs,
             loss=self.loss_log[-1],
             metrics=metrics
         )
+        print(f"Model parameters saved in file: {final_checkpoint.name}")
 

@@ -44,4 +44,3 @@ if __name__ == "__main__":
     start = datetime.now()
     main()
     end = datetime.now()
-    print(f"Total time = {end - start}")

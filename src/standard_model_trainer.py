@@ -77,7 +77,7 @@ class StandardModelTrainer:
         epoch_num: int,
         loss: float,
         metrics: StandardClassificationMetrics,
-    ):
+    ) -> Path:
         filename = f"{datetime.now()}.tar".replace(" ", "_")
         output_path = self.checkpoint_dir / filename
         output_object = {
@@ -88,6 +88,7 @@ class StandardModelTrainer:
             "optimizer_state_dict": self.optimizer.state_dict(),
         }
         torch.save(obj=output_object, f=output_path)
+        return output_path
 
     def eval_model_and_save_checkpoint(
         self, epoch_num: int, epoch_loss: float, test_dataloader: ud.DataLoader
