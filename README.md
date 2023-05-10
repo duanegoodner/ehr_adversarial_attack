@@ -40,10 +40,22 @@ The original paper trained a Long Short-Term Memory (LSTM) model using time seri
 This work uses a subset of the MIMIC-III database. The queries used to extract the necessary views and tables from MIMIC-III are saved in `src/docker_db/mimiciii_queries` . The outputs from running these queries are saved as `.targ.gz` files in in`data/mimiciii_query_results` . (So it is not necessary to download the MIMIC-III database. Just clone this repository.) After cloning the ehr_adversarial_attack repository, run the following command from the project root to extract the query results into .csv format:
 
 ```
-$ find data/mimiciii_query_results -type f -name '*.tar.gz' -execdir tar -xzf {} \;
+$ find data/mimiciii_query_results -type f -name '*.tar.gz' -execdir tar -xzvf {} \;
 ```
 
+Output:
 
+```
+pivoted_bg.csv
+d_icd_diagnoses.csv
+icustay_detail.csv
+pivoted_vital.csv
+admissions.csv
+diagnoses_icd.csv
+pivoted_gc.csv
+pivoted_uo.csv
+pivoted_lab.csv
+```
 
 ### Step 2. Obtain pre-processed data
 
@@ -54,7 +66,15 @@ There are two options for obtaining data that have been converted from the SQL q
 From the repository root directory, run the command:
 
 ```
-$ find data/output_feature_finalizer -type f -name '*.tar.gz' -execdir tar -xzf {} \;
+$ find data/output_feature_finalizer -type f -name '*.tar.gz' -execdir tar -xzvf {} \;
+```
+
+Output:
+
+```
+in_hospital_mortality_list.pickle
+measurement_data_list.pickle
+measurement_col_names.pickle
 ```
 
 #### Option B: Run the preprocessing code
@@ -156,9 +176,10 @@ Once again, only the filename (not full path), is printed, but that's all you ne
 From the repo root directory, run:
 
 ```
-$ python src/attack_results_analyzer.py -f k0.0-l10.15-lr0.1-ma100-ms1-2023-05-07_23:47:51.261865.pickle
-# Again, your filename will be different. Use whatever was output by the training / evaluation code.
+$ python src/attack_results_analyzer.py -f <filename_from_step4_output.tar>
 ```
+
+For example, if your output from Step 4 said: `Attack summary data saved in k0.0-l10.15-lr0.1-ma100-ms1-2023-05-07_23:47:51.261865.pickle`, you would run `$ python src/attack_results_analyzer.py -f k0.0-l10.15-lr0.1-ma100-ms1-2023-05-07_23:47:51.261865.pickle `
 
 This will produce plots of attack susceptibilities of various measurements vs. time for 0-to-1 and 1-to-0 attacks.  (The plot for 1-to-0 should appear first. Depending on your environment, you may need to close this plot window before the 0-to-1 plot appears.)
 
