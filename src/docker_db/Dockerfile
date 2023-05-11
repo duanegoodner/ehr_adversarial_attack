@@ -25,3 +25,5 @@ COPY ${LOCAL_MIMICIII_BUILD_TOOLS}/docker \
   ${POSTGRES_ENTRYPOINT}/buildmimic/docker
 COPY ${LOCAL_MIMICIII_BUILD_TOOLS}/postgres \
   ${POSTGRES_ENTRYPOINT}/buildmimic/postgres
+
+COPY ./src/docker_db/pg_entrypoint.sh ${POSTGRES_ENTRYPOINT}/pg_entrypoint.sh

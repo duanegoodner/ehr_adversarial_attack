@@ -3,6 +3,7 @@ version: '3.8'
 services:
   mimic_db:
     image: ${IMAGE_NAME}
+    restart: always
     build:
       context: ../../
       dockerfile: ./src/docker_db/Dockerfile
@@ -26,6 +27,7 @@ services:
     stdin_open: true
     tty: true
 
+
   # Purpose of postgres_setup is to prevent local user from losing access to
   # local db files. See https://stackoverflow.com/a/75099809 for details.
   # TODO: Experiment with permissions / ownership to make sure database ops in container work properly
@@ -37,14 +39,6 @@ services:
       - ${LOCAL_SQL_DIR}:${CONTAINER_SQL_DIR}
       - ${LOCAL_OUTPUT_CSV}:${CONTAINER_OUTPUT_CSV}
       - ${LOCAL_DB}:${PGDATA}
-  # TODO create shell script for entrypoint
-    entrypoint: [ "bash", "-c", "chmod 755 -R /var/lib/postgresql/data && chown 1000:1000 -R /var/lib/postgresql/data" ]
+    entrypoint: ["/bin/bash", "/docker-entrypoint-initdb.d/pg_entrypoint.sh"]
     depends_on:
       - mimic_db
-
-
-
-
-
-
-
