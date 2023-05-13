@@ -22,10 +22,6 @@ class DataExtractor:
         return sorted(self.queries_dir.glob("*.sql"))
 
     def run_query(self, sql_file: Path):
-        # load_dotenv(self.dot_env)
-        # db_user = os.getenv("POSTGRES_USERNAME")
-        # db_user_password = os.getenv("POSTGRES_PASSWORD")
-        # db_name = os.getenv("DATABASE")
         csv_filename = sql_file.name.replace(".sql", ".csv")
         csv_path = self.output_dir / csv_filename
 

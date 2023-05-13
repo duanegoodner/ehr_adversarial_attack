@@ -43,9 +43,10 @@ def main():
             params=model.parameters(), lr=1e-4, betas=(0.5, 0.999)
         ),
         save_checkpoints=True,
-        checkpoint_dir=Path(
-            "/home/duane/dproj/UIUC-DLH/project/ehr_adversarial_attack/data"
-        ),
+        checkpoint_dir=Path(__file__).parent.parent / "data",
+        # checkpoint_dir=Path(
+        #     "/home/duane/dproj/UIUC-DLH/project/ehr_adversarial_attack/data"
+        # ),
         checkpoint_interval=10,
     )
 

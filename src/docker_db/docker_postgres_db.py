@@ -11,16 +11,10 @@ class DockerPostgresDB:
         os.environ.setdefault(
             "LOCAL_PROJECT_ROOT", str(Path(__file__).parent.parent.parent)
         )
+        local_db_owner =
         self._docker_compose_path = (
             Path(__file__).parent / "docker-compose.yml"
         )
-        self._local_db_path = Path(os.getenv("LOCAL_DB"))
-        self._orig_local_db_info = self._local_db_path.stat()
-
-    @staticmethod
-    def get_local_db_file_info():
-        local_db_root = os.getenv("LOCAL_DB")
-        return Path(local_db_root).stat()
 
     def build_image(self):
         subprocess.run(
@@ -36,7 +30,6 @@ class DockerPostgresDB:
         subprocess.run(
             ["docker-compose", "-f", str(self._docker_compose_path), "down"]
         )
-
 
 
 

@@ -12,8 +12,6 @@ services:
         - POSTGRES_ENTRYPOINT=${POSTGRES_ENTRYPOINT}
     environment:
       - MIMIC_PASSWORD=${MIMIC_PASSWORD}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - PGDATA=${PGDATA}
       - BUILD_MIMIC=${BUILD_MIMIC}
     container_name: ${CONTAINER_NAME}
     volumes:

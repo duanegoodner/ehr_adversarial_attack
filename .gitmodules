@@ -4,3 +4,6 @@
 [submodule "mimic-code-fork"]
 	path = mimic-code-fork
 	url = https://github.com/duanegoodner/mimic-code-fork
+[submodule "postgres_mimiciii_docker"]
+	path = postgres_mimiciii_docker
+	url = https://github.com/duanegoodner/postgres_mimiciii_docker
