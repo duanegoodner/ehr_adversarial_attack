@@ -1,0 +1,5 @@
+[console_scripts]
+jd_access_status = accessjd.entrypoints.access_status:main
+jd_grant_access = accessjd.entrypoints.grant_access:main
+jd_revoke_access = accessjd.entrypoints.revoke_access:main
+jd_safety = accessjd.entrypoints.safety_check:main

@@ -1,0 +1,7 @@
+Metadata-Version: 2.1
+Name: accessjd
+Version: 0.0.1
+Summary: Manages write access given to Jetbrains ssh to Docker container
+Author: Duane Goodner
+Author-email: dmgoodner@gmail.com
+Requires-Python: >=3.7
