@@ -25,7 +25,7 @@ services:
         "/usr/local/entrypoints/jbs/main.sh"
       ]
     volumes:
-      - ${LOCAL_PROJECT_DIR}:${CONTAINER_PROJECT_DIR}
+      - ${LOCAL_PROJECT_ROOT}:${CONTAINER_PROJECT_ROOT}
       - /etc/localtime:/etc/localtime:ro
     ports:
       - "127.0.0.1:${CONTAINER_SSH_PORT}:22"
@@ -34,22 +34,32 @@ services:
     tty: true
 
   postgres_mimiciii:
-    image: duanegoodner/
-    build:
-      context: .
-      dockerfile: Dockerfile.postgres.mimiciii
-
+    image: duanegoodner/postgres_mimiciii
     environment:
-      - BUILD_MIMIC=${DB_BUILD_MIMIC_ON_RUN}
-      - POSTGRES_PASSWORD=${DB_POSTGRES_PASSWORD}
-      - MIMIC_PASSWORD=${DB_MIMIC_PASSWORD}
-
-    container_name: ${DB_CONTAINER_NAME}
+      - MIMIC_PASSWORD=mimic
+      - POSTGRES_PASSWORD=postgres
+      - PGDATA=/var/lib/postgresql/data
+      - BUILD_MIMIC=0
+    container_name: ehr_adv_attack_postgres_mimiciii
     volumes:
-      - ${DB_LOCAL_CSV_DIR}:${DB_CONTAINER_CSV_DIR}
-      - ${DB_LOCAL_DATA_DIR}:${DB_HOST_DATA_DIR}
+      - ${LOCAL_SQL_DIR}:/mimiciii_queries
+      - ${LOCAL_OUTPUT_CSV}:/mimiciii_query_results
+      - ${LOCAL_DB}:/var/lib/postgresql/data
     ports:
-      - ${DB_HOST_PORT}:5432
+      - 5555:5432
     init: true
     stdin_open: true
     tty: true
+
+  postgres_mimiciii_permissions:
+    image: duanegoodner/postgres_mimiciii
+    user: root
+    volumes:
+      - ${LOCAL_DB}:/var/lib/postgresql/data
+    entrypoint:
+      [
+        "/bin/bash",
+        "/docker-entrypoint-initdb.d/postgres_data_permissions/main.sh"
+      ]
+    depends_on:
+      - postgres_mimiciii

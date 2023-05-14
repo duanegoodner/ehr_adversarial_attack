@@ -4,12 +4,8 @@ __pycache__/
 *.pickle
 
 .idea/
-data/mimiciii_postgres/*
-!data/mimiciii_postgres/.gitkeep
 
 data/mimiciii_query_results/*.csv
-
-data/mimiciii_raw/
 
 data/preprocess/tables
 data/preprocess/views
