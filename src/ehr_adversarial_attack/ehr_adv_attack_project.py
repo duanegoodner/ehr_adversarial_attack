@@ -9,12 +9,22 @@ class DataResource:
     py_object_type: str
 
 
-class MimicIIIDatabaseInterface(ABC):
+class MimiciiiDatabaseInterface(ABC):
+
+    @abstractmethod
+    def connect(self):
+        pass
+
     @abstractmethod
     def run_sql_queries(
         self, sql_queries: list[Path]
-    ) -> dict[str, DataResource]:
+    ) ->list[Path]:
         pass
+
+    @abstractmethod
+    def close_connection(self):
+        pass
+
 
 
 class DataPreprocessor(ABC):
@@ -26,13 +36,16 @@ class DataPreprocessor(ABC):
 
 
 class ModelTrainer(ABC):
+    @abstractmethod
+    def train_model(self) -> dict[str, DataResource]:
+        pass
 
 
 
 class EHRAdvAttackProject:
     def __init__(
         self,
-        db_interface: MimicIIIDatabaseInterface,
+        db_interface: MimiciiiDatabaseInterface,
         preprocessor: DataPreprocessor,
     ):
         self._db_interface = db_interface

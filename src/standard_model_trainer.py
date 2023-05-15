@@ -146,7 +146,7 @@ class StandardModelTrainer:
         for x, y in test_dataloader:
             x, y = x.to(self.model.model_device), y.to(self.model.model_device)
             y_hat = self.model(x)
-            y_pred = self.interpret_output(model_output=y_hat)
+            y_pred = torch.argmax(input=y_hat, dim=1)
             all_y_true = torch.cat((all_y_true, y.to("cpu")), dim=0)
             all_y_pred = torch.cat((all_y_pred, y_pred.to("cpu")), dim=0)
             all_y_score = torch.cat((all_y_score, y_hat.to("cpu")), dim=0)

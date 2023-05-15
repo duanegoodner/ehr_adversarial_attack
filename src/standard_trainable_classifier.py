@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from typing import Callable
 
 
-def choose_max_val(x: torch.tensor) -> torch.tensor:
-    return torch.argmax(input=x, dim=1)
+# def choose_max_val(x: torch.tensor) -> torch.tensor:
+#     return torch.argmax(input=x, dim=1)
 
 
 @dataclass
@@ -52,13 +52,13 @@ class StandardTrainableClassifier(nn.Module, ABC):
         metrics_calculator: Callable[
             [torch.tensor, torch.tensor, torch.tensor], dataclass
         ] = calc_standard_metrics,
-        output_interpreter: Callable[
-            [torch.tensor], torch.tensor
-        ] = choose_max_val,
+        # output_interpreter: Callable[
+        #     [torch.tensor], torch.tensor
+        # ] = choose_max_val,
     ):
         super(StandardTrainableClassifier, self).__init__()
         self.model_device = model_device
-        self.output_interpreter = output_interpreter
+        # self.output_interpreter = output_interpreter
         self.metrics_calculator = metrics_calculator
         self.to(device=model_device)
 
