@@ -67,8 +67,3 @@ class StandardTrainableClassifier(nn.Module, ABC):
         pass
 
 
-# class StandardAttackableClassifier(StandardTrainableClassifier):
-#
-#     @abstractmethod
-#     def logit_output(self, x: torch.tensor) -> torch.tensor:
-#         pass

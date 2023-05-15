@@ -107,7 +107,7 @@ class JBDockerProjectConfig:
     @property
     def deployment_xml_path(self) -> Path:
         return (
-            Path(self._env.get("CONTAINER_PROJECT_DIR"))
+            Path(self._env.get("CONTAINER_PROJECT_ROOT"))
             / ".idea"
             / "deployment.xml"
         )

@@ -8,7 +8,7 @@ services:
   ehr_adversarial_attack:
     env_file:
       - .env
-    image: duanegoodner/dev_envs:ehr_adversarial_attack
+    image: duanegoodner/dev_envs:ehr_aa_app
     deploy:
       resources:
         reservations:
@@ -19,8 +19,8 @@ services:
     secrets:
       - jetbrains_user_pubkey
     build:
-      context: ../
-      dockerfile: ./app/Dockerfile
+      context: .
+      dockerfile: ./Dockerfile
       args:
         - PRIMARY_USER=${PRIMARY_USER}
         - JETBRAINS_USER=${JETBRAINS_USER}
@@ -29,7 +29,7 @@ services:
         - CONTAINER_PROJECT_ROOT=${CONTAINER_PROJECT_ROOT}
       secrets:
         - jetbrains_user_pubkey
-    container_name: ehr_adversarial_attack
+    container_name: ehr_aa_app
     entrypoint:
        [
         "/bin/bash",
