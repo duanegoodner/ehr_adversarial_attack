@@ -71,6 +71,7 @@ pvt as (
       when itemid = 50826 then 'TIDALVOLUME'
       when itemid = 50827 then 'VENTILATIONRATE'
       when itemid = 50828 then 'VENTILATOR'
+      when itemid = 50960 then 'MAGNESIUM'
       else null
     end as label,
     charttime,
@@ -129,6 +130,7 @@ pvt as (
       50826,
       50827,
       50828,
+      50960,
       51545
     )
 ),
@@ -262,6 +264,12 @@ grp as (
         else null
       end
     ) as po2,
+    avg(
+      case
+        when label = 'MAGNESIUM' then valuenum
+        else null
+      end
+    ) as magnesium,
     avg(
       case
         when label = 'POTASSIUM' then valuenum

@@ -157,6 +157,12 @@ le_avg as (
 		) as LACTATE,
 		avg(
 			case
+				when label = 'MAGNESIUM' then valuenum
+				else null
+			end
+		) as MAGNESIUM,
+		avg(
+			case
 				when label = 'PLATELET' then valuenum
 				else null
 			end
@@ -237,6 +243,7 @@ le_avg as (
 					when itemid = 51006 then 'BUN'
 					when itemid = 51300 then 'WBC'
 					when itemid = 51301 then 'WBC'
+					when itemid = 50960 then 'MAGNESIUM'
 					else null
 				end as label,
 				-- add in some sanity checks on the values
@@ -345,7 +352,8 @@ le_avg as (
 					-- UREA NITROGEN | CHEMISTRY | BLOOD | 791925
 					51301,
 					-- WHITE BLOOD CELLS | HEMATOLOGY | BLOOD | 753301
-					51300 -- WBC COUNT | HEMATOLOGY | BLOOD | 2371
+					51300, -- WBC COUNT | HEMATOLOGY | BLOOD | 2371
+					50960
 				)
 				and valuenum is not null
 				and valuenum > 0 -- lab values cannot be 0 and cannot be negative

@@ -13,7 +13,7 @@ MERGED_STAY_MEASUREMENT_OUTPUT_DIR = (
 )
 
 SAMPLE_LIST_BUILDER_OUTPUT_DIR = (
-    DATA_DIR / "output_full_admission_list_builder"
+    DATA_DIR / "output_full_admission_list"
 )
 
 FEATURE_BUILDER_OUTPUT_DIR = DATA_DIR / "output_feature_builder"
@@ -141,7 +141,7 @@ FullAdmissionData.__module__ = __name__
 @dataclass
 class FeatureBuilderResourceRefs:
     full_admission_list: Path = (
-        SAMPLE_LIST_BUILDER_OUTPUT_DIR / "full_admission_list.pickle"
+        SAMPLE_LIST_BUILDER_OUTPUT_DIR / "3_full_admission_list.pickle"
     )
     bg_lab_vital_summary_stats: Path = (
         MERGED_STAY_MEASUREMENT_OUTPUT_DIR

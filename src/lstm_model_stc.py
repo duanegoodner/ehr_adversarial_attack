@@ -1,18 +1,16 @@
-from abc import ABC, abstractmethod
 import torch
 import torch.nn as nn
-import standard_trainable_classifier as stc
+from standard_model_trainer import ModuleWithDevice
 
-
-class LSTMSun2018(stc.StandardTrainableClassifier):
+class LSTMSun2018(ModuleWithDevice):
     def __init__(
         self,
-        model_device: torch.device,
+        device: torch.device,
         input_size: int = 48,
         lstm_hidden_size: int = 128,
         fc_hidden_size: int = 32,
     ):
-        super().__init__(model_device=model_device)
+        super(LSTMSun2018, self).__init__(device=device)
         self.input_size = input_size
         self.lstm_hidden_size = lstm_hidden_size
         self.lstm = nn.LSTM(
@@ -30,14 +28,14 @@ class LSTMSun2018(stc.StandardTrainableClassifier):
         self.fc_2 = nn.Linear(in_features=fc_hidden_size, out_features=2)
         # self.act_2 = nn.Sigmoid()
         self.act_2 = nn.Softmax(dim=1)
-        self.to(device=model_device)
+        self.to(device=device)
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         h_0 = torch.zeros(2, x.size(0), self.lstm_hidden_size).to(
-            self.model_device
+            self.device
         )
         c_0 = torch.zeros(2, x.size(0), self.lstm_hidden_size).to(
-            self.model_device
+            self.device
         )
         lstm_out, (h_n, c_n) = self.lstm(x, (h_0, c_0))
         lstm_out = self.act_lstm(lstm_out)

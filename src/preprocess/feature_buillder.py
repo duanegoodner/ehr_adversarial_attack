@@ -107,7 +107,7 @@ class FeatureBuilder(pm.PreprocessModule):
                     f" {idx}/{len(data.full_admission_list)}"
                 )
 
-        # for hadm_entry in data.full_admission_list:
+        # for hadm_entry in data.3_full_admission_list:
         #     hadm_entry.time_series = self._process_hadm_df(
         #         df=hadm_entry.time_series
         #     )

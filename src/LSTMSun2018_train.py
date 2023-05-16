@@ -6,7 +6,6 @@ from torch.utils.data.dataset import random_split
 from lstm_model_stc import LSTMSun2018
 from standard_model_trainer import StandardModelTrainer
 from weighted_dataloader_builder import WeightedDataLoaderBuilder
-from x19_mort_dataset import X19MortalityDataset
 from dataset_full48_m19 import Full48M19Dataset
 
 
@@ -17,10 +16,9 @@ def main():
     else:
         cur_device = torch.device("cpu")
 
-    # dataset = X19MortalityDataset()
     dataset = Full48M19Dataset.from_feature_finalizer_output()
 
-    model = LSTMSun2018(model_device=cur_device)
+    model = LSTMSun2018(device=cur_device)
 
     train_dataset_size = int(len(dataset) * 0.8)
     test_dataset_size = len(dataset) - train_dataset_size
@@ -44,10 +42,7 @@ def main():
         ),
         save_checkpoints=True,
         checkpoint_dir=Path(__file__).parent.parent / "data",
-        # checkpoint_dir=Path(
-        #     "/home/duane/dproj/UIUC-DLH/project/ehr_adversarial_attack/data"
-        # ),
-        checkpoint_interval=10,
+         checkpoint_interval=10,
     )
 
     trainer.train_model(

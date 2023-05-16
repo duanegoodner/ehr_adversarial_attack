@@ -27,7 +27,7 @@ if __name__ == "__main__":
     admissions_query_output_path = (
             Path(__file__).parent.parent
             / "data"
-            / "mimiciii_query_results_psycopg2"
+            / "mimiciii_query_results"
             / "admissions.csv"
     )
 

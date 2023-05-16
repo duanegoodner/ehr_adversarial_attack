@@ -5,13 +5,15 @@ import torch.utils.data as ud
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-import standard_trainable_classifier as stc
-
-from x19_mort_dataset import X19MortalityDataset
-from lstm_model_stc import LSTMSun2018
 
 
-# TODO Separate Trainner and Evaluator in to two classes
+# TODO Separate Trainer and Evaluator in to two classes
+
+class ModuleWithDevice(nn.Module):
+    def __init__(self, device: torch.device):
+        super(ModuleWithDevice, self).__init__()
+        self.device = device
+        self.to(device)
 
 
 @dataclass
@@ -35,7 +37,7 @@ class StandardClassificationMetrics:
 class StandardModelTrainer:
     def __init__(
         self,
-        model: stc.StandardTrainableClassifier,
+        model: ModuleWithDevice,
         loss_fn: nn.Module,
         optimizer: torch.optim.Optimizer,
         save_checkpoints: bool,
@@ -111,8 +113,8 @@ class StandardModelTrainer:
         for epoch in range(num_epochs):
             running_loss = 0.0
             for num_batches, (x, y) in enumerate(train_dataloader):
-                x, y = x.to(self.model.model_device), y.to(
-                    self.model.model_device
+                x, y = x.to(self.model.device), y.to(
+                    self.model.device
                 )
                 self.optimizer.zero_grad()
                 y_hat = self.model(x).squeeze()
@@ -144,7 +146,7 @@ class StandardModelTrainer:
         all_y_pred = torch.LongTensor()
         all_y_score = torch.FloatTensor()
         for x, y in test_dataloader:
-            x, y = x.to(self.model.model_device), y.to(self.model.model_device)
+            x, y = x.to(self.model.device), y.to(self.model.device)
             y_hat = self.model(x)
             y_pred = torch.argmax(input=y_hat, dim=1)
             all_y_true = torch.cat((all_y_true, y.to("cpu")), dim=0)
@@ -157,29 +159,29 @@ class StandardModelTrainer:
         return metrics
 
 
-if __name__ == "__main__":
-    if torch.cuda.is_available():
-        cur_device = torch.device("cuda:0")
-    else:
-        cur_device = torch.device("cpu")
-
-    dataset = X19MortalityDataset()
-    data_loader = ud.DataLoader(dataset=dataset, batch_size=128, shuffle=True)
-    cur_model = LSTMSun2018(model_device=cur_device)
-    trainer = StandardModelTrainer(
-        model=cur_model,
-        # train_dataloader=data_loader,
-        # test_dataloader=data_loader,
-        loss_fn=nn.CrossEntropyLoss(),
-        optimizer=torch.optim.Adam(
-            params=cur_model.parameters(), lr=1e-4, betas=(0.5, 0.999)
-        ),
-        save_checkpoints=False,
-        checkpoint_dir=Path(__file__).parent.parent
-        / "data"
-        / "training_results"
-        / "troubleshooting_runs",
-    )
-
-    trainer.train_model(train_dataloader=data_loader, num_epochs=3)
-    trainer.evaluate_model(test_dataloader=data_loader)
+# if __name__ == "__main__":
+#     if torch.cuda.is_available():
+#         cur_device = torch.device("cuda:0")
+#     else:
+#         cur_device = torch.device("cpu")
+#
+#     dataset = X19MortalityDataset()
+#     data_loader = ud.DataLoader(dataset=dataset, batch_size=128, shuffle=True)
+#     cur_model = LSTMSun2018(model_device=cur_device)
+#     trainer = StandardModelTrainer(
+#         model=cur_model,
+#         # train_dataloader=data_loader,
+#         # test_dataloader=data_loader,
+#         loss_fn=nn.CrossEntropyLoss(),
+#         optimizer=torch.optim.Adam(
+#             params=cur_model.parameters(), lr=1e-4, betas=(0.5, 0.999)
+#         ),
+#         save_checkpoints=False,
+#         checkpoint_dir=Path(__file__).parent.parent
+#         / "data"
+#         / "training_results"
+#         / "troubleshooting_runs",
+#     )
+#
+#     trainer.train_model(train_dataloader=data_loader, num_epochs=3)
+#     trainer.evaluate_model(test_dataloader=data_loader)

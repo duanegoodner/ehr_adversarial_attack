@@ -64,9 +64,9 @@ class FullAdmissionListBuilder(pm.PreprocessModule):
             for item in list_of_group_dfs
         ]
 
-        output_path = self.settings.output_dir / "full_admission_list.pickle"
+        output_path = self.settings.output_dir / "3_full_admission_list.pickle"
         self.export_resource(
-            key="full_admission_list",
+            key="3_full_admission_list",
             resource=full_admission_list,
             path=output_path
         )

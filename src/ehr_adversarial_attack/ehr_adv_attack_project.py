@@ -10,15 +10,12 @@ class DataResource:
 
 
 class MimiciiiDatabaseInterface(ABC):
-
     @abstractmethod
     def connect(self):
         pass
 
     @abstractmethod
-    def run_sql_queries(
-        self, sql_queries: list[Path]
-    ) ->list[Path]:
+    def run_sql_queries(self, sql_queries: list[Path]) -> list[Path]:
         pass
 
     @abstractmethod
@@ -26,12 +23,9 @@ class MimiciiiDatabaseInterface(ABC):
         pass
 
 
-
 class DataPreprocessor(ABC):
     @abstractmethod
-    def preprocess(
-        self, sql_query_results: dict[str, DataResource]
-    ) -> dict[str, DataResource]:
+    def preprocess(self) -> dict[str, DataResource]:
         pass
 
 
@@ -39,7 +33,6 @@ class ModelTrainer(ABC):
     @abstractmethod
     def train_model(self) -> dict[str, DataResource]:
         pass
-
 
 
 class EHRAdvAttackProject:

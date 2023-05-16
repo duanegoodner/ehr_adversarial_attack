@@ -4,7 +4,7 @@
 import numpy as np
 import pandas as pd
 import labels_builder_input_classes as lbin
-import preprocess_module as pm
+from preprocess import preprocess_module as pm
 from preprocess_settings import PREPROC_SETTINGS
 
 
