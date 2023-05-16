@@ -9,8 +9,8 @@ data/mimiciii_postgres/*
 
 data/mimiciii_query_results/*.csv
 data/mimiciii_query_results/*.gz
-
-data/mimiciii_raw/
+data/mimiciii_raw/csv/*
+!data/mimiciii_raw/csv/.gitkeep
 
 data/preprocess/tables
 data/preprocess/views

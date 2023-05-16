@@ -41,53 +41,63 @@ The repository for this paper is available at: https://github.com/illidanlab/urg
 
 * seaborn
 
+* Docker
+
   
 
 ## Instructions for running code and viewing results in this repository
 
-### Step 1. Download data
-
-This work uses a subset of the MIMIC-III database. The queries used to extract the necessary views and tables from MIMIC-III are saved in `src/docker_db/mimiciii_queries` . The outputs from running these queries are saved as `.targ.gz` files in in`data/mimiciii_query_results` . (So it is not necessary to download the MIMIC-III database. Just clone this repository.) After cloning the ehr_adversarial_attack repository, run the following command from the project root to extract the query results into .csv format:
+#### Step 1. Clone a local copy of this project repo:
 
 ```
-$ find data/mimiciii_query_results -type f -name '*.tar.gz' -execdir tar -xzvf {} \;
+$ https://github.com/duanegoodner/ehr_adversarial_attack
 ```
 
-Output:
+
+
+### **Step 2. Download data**
+
+Obtain credentialed access to Physionet.org, and run the following command from your terminal:
 
 ```
-pivoted_bg.csv
-d_icd_diagnoses.csv
-icustay_detail.csv
-pivoted_vital.csv
-admissions.csv
-diagnoses_icd.csv
-pivoted_gc.csv
-pivoted_uo.csv
-pivoted_lab.csv
+$ wget -r -N -c -np --user <your_physionet_username> --ask-password https://physionet.org/files/mimiciii/1.4/
 ```
 
-### Step 2. Obtain pre-processed data
 
-There are two options for obtaining data that have been converted from the SQL query output format to the feature and label tensors required for LSTM model input. Option A is faster.
 
-#### Option A: Extract the existing preprocessed archive files
+### Step 3. Extract MIMIC-III csv files
 
-From the repository root directory, run the command:
+Extract the file downloaded in step 2. Save all expanded .csv files to `ehr_adversarial_attack/data/mimiciii_raw/csv/`
 
-```
-$ find data/output_feature_finalizer -type f -name '*.tar.gz' -execdir tar -xzvf {} \;
-```
 
-Output:
+
+### Step 3.  Build a Postgres MIMIC-III database using Docker
+
+From directory `ehr_adversarial_attack/src/docker_db`, run the following commands:
 
 ```
-in_hospital_mortality_list.pickle
-measurement_data_list.pickle
-measurement_col_names.pickle
+$ docker compose build
+$ docker compose up
+# Details of the database build process taking place inside a container will show in the terminal. Will take ~45 minutes
 ```
 
-#### Option B: Run the preprocessing code
+Once the database has finished building, use CTRL-C to stop the container.
+
+
+
+### Step 4. Run the MIMIC-III queries
+
+From directory `ehr_adversarial_attack/src/docker_db`, run:
+
+```
+$ ./run_queries.sh
+```
+
+ This will re-start the Docker container, run the necessary .sql queries, and save the results to `ehr_adversarial_attack/data/mimiciii_query_results`.
+
+
+
+### Step 5. Pre-process the data
 
 From the repository root directory, run the following command to preprocess the SQL query outputs into the LSTM model input format:
 
@@ -131,14 +141,6 @@ Total preprocessing time = 555.2803893089294 seconds
 
 ### Step 3. Obtain a trained LSTM model
 
-This step also has a fast option (A), and a slow option (B).
-
-#### Option A: Do nothing, except note the filename that will be needed for Step 4
-
-Parameters of a pre-trained LSTM model are saved in `data/cross_validate_sun2018_full48m19_01/2023-05-07_23:32:09.938445.tar`. Take note of the filename `2023-05-07_23:32:09.938445.tar` (just the filename, not the full path), so you can use it as input when running adversarial attacks in Step 4.
-
-#### Option B: Run the cross-validation script
-
 From the repository root directory, run:
 
 ```
@@ -167,9 +169,7 @@ Now we are ready to run an adversarial attack on an the trained LSTM model. From
 $ python src/adv_attack_full48_m19.py -f <file_name_obained_from_step_3.tar>
 ```
 
-For example, if you used Option A in Step 3, you would run `$ python src/adv_attack_full48_m19.py -f 2023-05-07_23:32:09.938445.tar`
-
-Output:
+Example Output:
 
 ```
 # Updates on elapsed time and index of sample under attack
