@@ -15,7 +15,7 @@ dependencies:
   - pandas
   - pip
   - psycopg2
-  - python=3.10.9
+  - python=3.11.2
   - python-dotenv
   - scikit-learn
   - seaborn

@@ -1,10 +1,19 @@
+import sys
 import time
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
+
+
 from ehr_adv_attack_project import DataPreprocessor, DataResource
 from prefilter import Prefilter
 from icustay_measurement_combiner import ICUStayMeasurementCombiner
 from sample_list_builder import FullAdmissionListBuilder
 from feature_buillder import FeatureBuilder
-from feature_finallizer import FeatureFinalizer
+from feature_finalizer import FeatureFinalizer
+
+
+
+
 
 
 class ImplementedPreprocessor(DataPreprocessor):

@@ -1,5 +1,9 @@
 import pandas as pd
+import sys
 from dataclasses import dataclass
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).parent.parent))
 import project_config as pc
 from preprocess_module import PreprocessModule
 from preprocess_input_classes import PrefilterSettings, PrefilterResourceRefs

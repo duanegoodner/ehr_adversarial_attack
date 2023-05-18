@@ -1,9 +1,10 @@
+import pandas as pd
+import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 
-import pandas as pd
-
+sys.path.append(str(Path(__file__).parent.parent))
 import preprocess_resource as pr
 from resource_io import ResourceImporter, ResourceExporter
 

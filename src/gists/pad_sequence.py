@@ -11,7 +11,7 @@ from torch.nn.utils.rnn import pad_sequence
 #
 # print(padded_data.shape)  # prints torch.Size([4, 5, 40])
 
-a = torch.ones(5, 10)
-b = torch.ones(10, 10)
-c = torch.ones(15, 10)
+a = torch.ones(5, 4)
+b = torch.ones(7, 4)
+c = torch.ones(9, 4)
 result = pad_sequence([a, b, c], batch_first=True)

@@ -198,7 +198,7 @@ def main(num_samples=10, max_num_epochs=10, gpus_per_trial=2):
             best_trained_model = nn.DataParallel(best_trained_model)
     best_trained_model.to(device)
 
-    best_checkpoint_dir = best_trial.checkpoint.value
+    best_checkpoint_dir = best_trial.checkpoint.dir_or_data
     model_state, optimizer_state = torch.load(os.path.join(
         best_checkpoint_dir, "checkpoint"))
     best_trained_model.load_state_dict(model_state)
@@ -209,6 +209,6 @@ def main(num_samples=10, max_num_epochs=10, gpus_per_trial=2):
 
 if __name__ == "__main__":
     # You can change the number of GPUs per trial here:
-    main(num_samples=10, max_num_epochs=10, gpus_per_trial=1)
+    main(num_samples=2, max_num_epochs=1, gpus_per_trial=1)
 
 

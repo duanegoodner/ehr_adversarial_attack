@@ -26,7 +26,6 @@ class LSTMSun2018(ModuleWithDevice):
         )
         self.act_1 = nn.ReLU()
         self.fc_2 = nn.Linear(in_features=fc_hidden_size, out_features=2)
-        # self.act_2 = nn.Sigmoid()
         self.act_2 = nn.Softmax(dim=1)
         self.to(device=device)
 

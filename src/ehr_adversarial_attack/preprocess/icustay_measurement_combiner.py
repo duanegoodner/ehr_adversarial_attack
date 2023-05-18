@@ -1,5 +1,8 @@
 import pandas as pd
+import sys
 from dataclasses import dataclass
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
 import preprocess_module as pm
 import preprocess_input_classes as pic
 import project_config as pc

@@ -50,7 +50,7 @@ my_data = [torch.randn(n, 5) for n in [10, 20, 30, 40]]
 my_padded_data = pad_sequence(my_data, batch_first=True)
 
 # generate the sequence lengths tensor
-my_seq_lengths = torch.LongTensor([len(d[0]) for d in my_data])
+my_seq_lengths = torch.LongTensor([d.shape[0] for d in my_data])
 
 # define the model with input_size=5, hidden_size=10, num_layers=2, and num_classes=2
 my_model = BiLSTM(input_size=5, hidden_size=10, num_layers=2, num_classes=2)

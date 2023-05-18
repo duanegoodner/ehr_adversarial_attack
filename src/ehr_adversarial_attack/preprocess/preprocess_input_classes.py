@@ -169,6 +169,7 @@ class FeatureFinalizerResourceRefs:
 @dataclass
 class FeatureFinalizerSettings:
     output_dir: Path = pc.PREPROCESS_OUTPUT_DIR
-    observation_window_in_hours: int = pc.OBSERVATION_WINDOW_HOURS
+    max_hours: int = pc.MAX_OBSERVATION_HOURS
+    min_hours: int = pc.MIN_OBSERVATION_HOURS
     require_exact_num_hours: bool = pc.REQUIRE_EXACT_NUM_HOURS # when True, no need for padding
     observation_window_start: str = pc.OBSERVATION_WINDOW_START
