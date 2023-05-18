@@ -1,6 +1,12 @@
 import torch
 import torch.nn as nn
+from torch.nn.utils.rnn import (
+    pack_padded_sequence,
+    pad_packed_sequence,
+    pad_sequence,
+)
 from standard_model_trainer import ModuleWithDevice
+
 
 class LSTMSun2018(ModuleWithDevice):
     def __init__(
@@ -29,22 +35,35 @@ class LSTMSun2018(ModuleWithDevice):
         self.act_2 = nn.Softmax(dim=1)
         self.to(device=device)
 
-    def forward(self, x: torch.tensor) -> torch.tensor:
-        h_0 = torch.zeros(2, x.size(0), self.lstm_hidden_size).to(
-            self.device
+    def forward(self, x: torch.tensor, lengths: torch.tensor) -> torch.tensor:
+        h_0 = torch.zeros(2, x.size(0), self.lstm_hidden_size).to(self.device)
+        c_0 = torch.zeros(2, x.size(0), self.lstm_hidden_size).to(self.device)
+
+        # convert x to PackedSequence
+        x_packed = pack_padded_sequence(
+            input=x, lengths=lengths, batch_first=True, enforce_sorted=False
         )
-        c_0 = torch.zeros(2, x.size(0), self.lstm_hidden_size).to(
-            self.device
+        lstm_out_packed, (h_n, c_n) = self.lstm(x_packed, (h_0, c_0))
+
+        # unpack lstm_out
+        unpacked_lstm_out, lstm_out_lengths = pad_packed_sequence(
+            sequence=lstm_out_packed, batch_first=True
         )
-        lstm_out, (h_n, c_n) = self.lstm(x, (h_0, c_0))
-        lstm_out = self.act_lstm(lstm_out)
-        lstm_out = self.dropout(lstm_out)
-        fc_1_out = self.fc_1(lstm_out[:, -1, :])
+
+        # select final hidden state from each sequence
+        final_lstm_out = unpacked_lstm_out[
+            torch.arange(unpacked_lstm_out.shape[0]), lstm_out_lengths - 1, :
+        ].squeeze(
+
+        )
+        final_lstm_out = self.act_lstm(final_lstm_out)
+        final_lstm_out = self.dropout(final_lstm_out)
+
+        # fc_1_out = self.fc_1(final_lstm_out[:, -1, :])
+        fc_1_out = self.fc_1(final_lstm_out)
+
         fc_1_out = self.act_1(fc_1_out)
         fc_2_out = self.fc_2(fc_1_out)
         out = self.act_2(fc_2_out)
         # out = torch.softmax(fc_2_out, dim=1)
         return out
-
-
-

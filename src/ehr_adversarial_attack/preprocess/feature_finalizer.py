@@ -67,7 +67,9 @@ class FeatureFinalizer(pm.PreprocessModule):
             & (time_series[time_col] < end_time[0])
         ]
 
-    def _get_feature_array(self, sample: pic.FullAdmissionData) -> np.ndarray:
+    def _get_feature_array(
+        self, sample: pic.FullAdmissionData
+    ) -> np.ndarray | None:
         observation_start_time = getattr(
             sample, self.settings.observation_window_start
         )
@@ -84,15 +86,12 @@ class FeatureFinalizer(pm.PreprocessModule):
             time_series=sample.time_series,
         )
 
-        # data_in_observation_window = sample.time_series[
-        #     (sample.time_series["charttime"] >= observation_start_time[0])
-        #     & (sample.time_series["charttime"] <= observation_end_time[0])
-        # ]
-        # data_in_range.drop(["charttime"], axis=1, inplace=True)
-
-        return data_in_range.loc[
-            :, ~data_in_range.columns.isin(["charttime"])
-        ].values
+        if data_in_range.shape[0] >= self.settings.min_hours:
+            return data_in_range.loc[
+                :, ~data_in_range.columns.isin(["charttime"])
+            ].values
+        else:
+            return None
 
     def process(self):
         assert self.settings.output_dir.exists()
@@ -106,27 +105,11 @@ class FeatureFinalizer(pm.PreprocessModule):
 
         for entry in data.processed_admission_list:
             feature_array = self._get_feature_array(sample=entry)
-            measurement_data_list.append(feature_array)
-            in_hospital_mortality_list.append(
-                entry.hospital_expire_flag.item()
-            )
-
-        # if self.settings.require_exact_num_hours:
-        #     indices_with_exact_num_hours = [
-        #         i
-        #         for i in range(len(measurement_data_list))
-        #         if measurement_data_list[i].shape[0] == self.settings.max_hours
-        #     ]
-        #
-        #     measurement_data_list = [
-        #         measurement_data_list[i] for i in indices_with_exact_num_hours
-        #     ]
-        #     in_hospital_mortality_list = [
-        #         in_hospital_mortality_list[i]
-        #         for i in indices_with_exact_num_hours
-        #     ]
-
-        # in_hospital_mortality_array = np.array(in_hospital_mortality)
+            if feature_array is not None:
+                measurement_data_list.append(feature_array)
+                in_hospital_mortality_list.append(
+                    entry.hospital_expire_flag.item()
+                )
 
         self.export_resource(
             key="measurement_col_names",

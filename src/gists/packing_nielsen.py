@@ -14,19 +14,22 @@ import torch.nn as nn
 #
 # y = rnn_utils.pad_packed_sequence(packed_output)
 
+a = torch.tensor([4, 5], dtype=torch.float)
+b = torch.tensor([6], dtype=torch.float)
+c = torch.tensor([1, 2, 3], dtype=torch.float)
 
-a = torch.tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=torch.float)
-b = torch.tensor([[10, 11, 12], [13, 14, 15]], dtype=torch.float)
-c = torch.tensor([[17, 18, 19]], dtype=torch.float)
+# padded_sequences = rnn_utils.pad_sequence(sequences=[a, b, c], batch_first=True)
+# my_lengths = torch.tensor([item.shape[0] for item in [a, b, c]])
+#
+#
+# packed_input = rnn_utils.pack_padded_sequence(
+#     input=padded_sequences, lengths=my_lengths, enforce_sorted=False
+# )
 
-padded_sequences = rnn_utils.pad_sequence(sequences=[a, b, c])
-my_lengths = torch.tensor([item.shape[0] for item in [a, b, c]])
-
-
-packed_input = rnn_utils.pack_padded_sequence(
-    input=padded_sequences, lengths=my_lengths
+packed_input = rnn_utils.pack_sequence(
+    sequences=[a, b, c], enforce_sorted=False
 )
 
-lstm = nn.LSTM(3, 5)
-packed_output, (hidden, cell) = lstm(packed_input)
-padded_output = rnn_utils.pad_packed_sequence(packed_output)
+# lstm = nn.LSTM(1, 5)
+# packed_output, (hidden, cell) = lstm(packed_input)
+# padded_output = rnn_utils.pad_packed_sequence(packed_output)

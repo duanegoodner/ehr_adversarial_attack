@@ -1,7 +1,12 @@
-import numpy as np
 import torch
 from dataset_with_index import DatasetWithIndex
 from pathlib import Path
+from torch.nn.utils.rnn import (
+    pack_padded_sequence,
+    pad_packed_sequence,
+    pad_sequence,
+    pack_sequence,
+)
 from torch.utils.data import Dataset
 import preprocess.preprocess_input_classes as pic
 import project_config as pc
@@ -50,12 +55,21 @@ class X19MGeneralDataset(Dataset):
         )
 
 
-class X19GeneralDatasetWithIndex(X19MGeneralDataset, DatasetWithIndex):
+class X19MGeneralDatasetWithIndex(X19MGeneralDataset, DatasetWithIndex):
     def __getitem__(self, idx: int):
         return idx, self.measurements[idx], self.in_hosp_mort[idx]
 
 
-if __name__ == "__main__":
-    x19_general_dataset = (
-        X19GeneralDatasetWithIndex.from_feaure_finalizer_output()
+def x19m_collate_fn(batch):
+    features, labels = zip(*batch)
+    padded_features = pad_sequence(sequences=features, batch_first=True)
+    lengths = torch.tensor(
+        [item.shape[0] for item in features], dtype=torch.long
     )
+    return padded_features, torch.tensor(labels, dtype=torch.long), lengths
+
+
+if __name__ == "__main__":
+    x19_general_dataset = X19MGeneralDataset.from_feaure_finalizer_output()
+
+

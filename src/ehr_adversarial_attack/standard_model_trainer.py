@@ -9,6 +9,7 @@ from pathlib import Path
 
 # TODO Separate Trainer and Evaluator in to two classes
 
+
 class ModuleWithDevice(nn.Module):
     def __init__(self, device: torch.device):
         super(ModuleWithDevice, self).__init__()
@@ -112,12 +113,13 @@ class StandardModelTrainer:
 
         for epoch in range(num_epochs):
             running_loss = 0.0
-            for num_batches, (x, y) in enumerate(train_dataloader):
-                x, y = x.to(self.model.device), y.to(
-                    self.model.device
+            for num_batches, (x, y, lengths) in enumerate(train_dataloader):
+                x, y = (
+                    x.to(self.model.device),
+                    y.to(self.model.device),
                 )
                 self.optimizer.zero_grad()
-                y_hat = self.model(x).squeeze()
+                y_hat = self.model(x, lengths).squeeze()
                 loss = self.loss_fn(y_hat, y)
                 loss.backward()
                 self.optimizer.step()
@@ -145,9 +147,9 @@ class StandardModelTrainer:
         all_y_true = torch.LongTensor()
         all_y_pred = torch.LongTensor()
         all_y_score = torch.FloatTensor()
-        for x, y in test_dataloader:
+        for x, y, lengths in test_dataloader:
             x, y = x.to(self.model.device), y.to(self.model.device)
-            y_hat = self.model(x)
+            y_hat = self.model(x, lengths)
             y_pred = torch.argmax(input=y_hat, dim=1)
             all_y_true = torch.cat((all_y_true, y.to("cpu")), dim=0)
             all_y_pred = torch.cat((all_y_pred, y_pred.to("cpu")), dim=0)

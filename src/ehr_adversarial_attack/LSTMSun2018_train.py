@@ -7,7 +7,7 @@ from lstm_model_stc import LSTMSun2018
 from standard_model_trainer import StandardModelTrainer
 from weighted_dataloader_builder import WeightedDataLoaderBuilder
 from dataset_full48_m19 import Full48M19Dataset
-
+from x19_mort_general_dataset import x19m_collate_fn, X19MGeneralDataset
 
 
 def main():
@@ -16,7 +16,8 @@ def main():
     else:
         cur_device = torch.device("cpu")
 
-    dataset = Full48M19Dataset.from_feature_finalizer_output()
+    # dataset = Full48M19Dataset.from_feature_finalizer_output()
+    dataset = X19MGeneralDataset.from_feaure_finalizer_output()
 
     model = LSTMSun2018(device=cur_device)
 
@@ -26,10 +27,13 @@ def main():
         dataset=dataset, lengths=(train_dataset_size, test_dataset_size)
     )
     train_dataloader = WeightedDataLoaderBuilder().build(
-        dataset=train_dataset, batch_size=128
+        dataset=train_dataset, batch_size=128, collate_fn=x19m_collate_fn
     )
     test_dataloader = DataLoader(
-        dataset=test_dataset, batch_size=128, shuffle=True
+        dataset=test_dataset,
+        batch_size=128,
+        shuffle=True,
+        collate_fn=x19m_collate_fn,
     )
 
     trainer = StandardModelTrainer(
@@ -41,8 +45,8 @@ def main():
             params=model.parameters(), lr=1e-4, betas=(0.5, 0.999)
         ),
         save_checkpoints=True,
-        checkpoint_dir=Path(__file__).parent.parent / "data",
-         checkpoint_interval=10,
+        checkpoint_dir=Path(__file__).parent.parent.parent / "data",
+        checkpoint_interval=10,
     )
 
     trainer.train_model(

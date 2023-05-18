@@ -53,7 +53,7 @@ PREPROCESS_OUTPUT_FILES = {
     "measurement_data_list": "measurement_data_list.pickle",
     "in_hospital_mortality_list": "in_hospital_mortality_list.pickle",
 }
-MIN_OBSERVATION_HOURS = 6
+MIN_OBSERVATION_HOURS = 1
 MAX_OBSERVATION_HOURS = 48
 REQUIRE_EXACT_NUM_HOURS = False
 OBSERVATION_WINDOW_START = "intime"
