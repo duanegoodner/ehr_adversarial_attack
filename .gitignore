@@ -7,10 +7,8 @@ __pycache__/
 
 data/mimiciii_query_results/*.csv
 
-data/preprocess/tables
-data/preprocess/views
-data/preprocess/save
-data/preprocess/current_full_result
-data/train*
+data/output_feature_finalizer/*
+data/training_results/*
+
 
 

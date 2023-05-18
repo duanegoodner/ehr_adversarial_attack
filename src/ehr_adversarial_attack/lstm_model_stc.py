@@ -44,8 +44,6 @@ class LSTMSun2018(ModuleWithDevice):
             input=x, lengths=lengths, batch_first=True, enforce_sorted=False
         )
         lstm_out_packed, (h_n, c_n) = self.lstm(x_packed, (h_0, c_0))
-
-        # unpack lstm_out
         unpacked_lstm_out, lstm_out_lengths = pad_packed_sequence(
             sequence=lstm_out_packed, batch_first=True
         )
@@ -53,15 +51,10 @@ class LSTMSun2018(ModuleWithDevice):
         # select final hidden state from each sequence
         final_lstm_out = unpacked_lstm_out[
             torch.arange(unpacked_lstm_out.shape[0]), lstm_out_lengths - 1, :
-        ].squeeze(
-
-        )
+        ].squeeze()
         final_lstm_out = self.act_lstm(final_lstm_out)
         final_lstm_out = self.dropout(final_lstm_out)
-
-        # fc_1_out = self.fc_1(final_lstm_out[:, -1, :])
         fc_1_out = self.fc_1(final_lstm_out)
-
         fc_1_out = self.act_1(fc_1_out)
         fc_2_out = self.fc_2(fc_1_out)
         out = self.act_2(fc_2_out)

@@ -159,31 +159,3 @@ class StandardModelTrainer:
         )
         print(f"Predictive performance on test data:\n{metrics}\n")
         return metrics
-
-
-# if __name__ == "__main__":
-#     if torch.cuda.is_available():
-#         cur_device = torch.device("cuda:0")
-#     else:
-#         cur_device = torch.device("cpu")
-#
-#     dataset = X19MortalityDataset()
-#     data_loader = ud.DataLoader(dataset=dataset, batch_size=128, shuffle=True)
-#     cur_model = LSTMSun2018(model_device=cur_device)
-#     trainer = StandardModelTrainer(
-#         model=cur_model,
-#         # train_dataloader=data_loader,
-#         # test_dataloader=data_loader,
-#         loss_fn=nn.CrossEntropyLoss(),
-#         optimizer=torch.optim.Adam(
-#             params=cur_model.parameters(), lr=1e-4, betas=(0.5, 0.999)
-#         ),
-#         save_checkpoints=False,
-#         checkpoint_dir=Path(__file__).parent.parent
-#         / "data"
-#         / "training_results"
-#         / "troubleshooting_runs",
-#     )
-#
-#     trainer.train_model(train_dataloader=data_loader, num_epochs=3)
-#     trainer.evaluate_model(test_dataloader=data_loader)

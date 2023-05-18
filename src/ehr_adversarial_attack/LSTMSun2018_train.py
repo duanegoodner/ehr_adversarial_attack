@@ -6,7 +6,6 @@ from torch.utils.data.dataset import random_split
 from lstm_model_stc import LSTMSun2018
 from standard_model_trainer import StandardModelTrainer
 from weighted_dataloader_builder import WeightedDataLoaderBuilder
-from dataset_full48_m19 import Full48M19Dataset
 from x19_mort_general_dataset import x19m_collate_fn, X19MGeneralDataset
 
 
@@ -16,11 +15,9 @@ def main():
     else:
         cur_device = torch.device("cpu")
 
-    # dataset = Full48M19Dataset.from_feature_finalizer_output()
-    dataset = X19MGeneralDataset.from_feaure_finalizer_output()
-
     model = LSTMSun2018(device=cur_device)
 
+    dataset = X19MGeneralDataset.from_feaure_finalizer_output()
     train_dataset_size = int(len(dataset) * 0.8)
     test_dataset_size = len(dataset) - train_dataset_size
     train_dataset, test_dataset = random_split(
@@ -45,7 +42,10 @@ def main():
             params=model.parameters(), lr=1e-4, betas=(0.5, 0.999)
         ),
         save_checkpoints=True,
-        checkpoint_dir=Path(__file__).parent.parent.parent / "data",
+        checkpoint_dir=Path(__file__).parent.parent.parent
+        / "data"
+        / "training_results"
+        / "LSTM_Sun2018_x19m_6_48",
         checkpoint_interval=10,
     )
 
