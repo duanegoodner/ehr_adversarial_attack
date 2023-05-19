@@ -8,6 +8,41 @@ from torch.nn.utils.rnn import (
 from standard_model_trainer import ModuleWithDevice
 
 
+class BidirectionalX19LSTM(ModuleWithDevice):
+    def __init__(
+        self,
+        device: torch.device,
+        input_size: int = 19,
+        lstm_hidden_size: int = 128,
+    ):
+        super(BidirectionalX19LSTM, self).__init__(device=device)
+        self.input_size = input_size
+        self.lstm_hidden_size = lstm_hidden_size
+        self.lstm = nn.LSTM(
+            input_size=input_size,
+            hidden_size=lstm_hidden_size,
+            bidirectional=True,
+            batch_first=True,
+        )
+
+    def forward(self, x: torch.tensor, lengths: torch.tensor) -> torch.tensor:
+        h_0 = torch.zeros(2, x.size(0), self.lstm_hidden_size).to(self.device)
+        c_0 = torch.zeros(2, x.size(0), self.lstm_hidden_size).to(self.device)
+        # convert x to PackedSequence
+        x_packed = pack_padded_sequence(
+            input=x, lengths=lengths, batch_first=True, enforce_sorted=False
+        )
+        lstm_out_packed, (h_n, c_n) = self.lstm(x_packed, (h_0, c_0))
+        unpacked_lstm_out, lstm_out_lengths = pad_packed_sequence(
+            sequence=lstm_out_packed, batch_first=True
+        )
+        # select final hidden state from each sequence
+        final_lstm_out = unpacked_lstm_out[
+            torch.arange(unpacked_lstm_out.shape[0]), lstm_out_lengths - 1, :
+        ].squeeze()
+        return final_lstm_out
+
+
 class LSTMSun2018(ModuleWithDevice):
     def __init__(
         self,
@@ -38,7 +73,6 @@ class LSTMSun2018(ModuleWithDevice):
     def forward(self, x: torch.tensor, lengths: torch.tensor) -> torch.tensor:
         h_0 = torch.zeros(2, x.size(0), self.lstm_hidden_size).to(self.device)
         c_0 = torch.zeros(2, x.size(0), self.lstm_hidden_size).to(self.device)
-
         # convert x to PackedSequence
         x_packed = pack_padded_sequence(
             input=x, lengths=lengths, batch_first=True, enforce_sorted=False
@@ -47,7 +81,6 @@ class LSTMSun2018(ModuleWithDevice):
         unpacked_lstm_out, lstm_out_lengths = pad_packed_sequence(
             sequence=lstm_out_packed, batch_first=True
         )
-
         # select final hidden state from each sequence
         final_lstm_out = unpacked_lstm_out[
             torch.arange(unpacked_lstm_out.shape[0]), lstm_out_lengths - 1, :

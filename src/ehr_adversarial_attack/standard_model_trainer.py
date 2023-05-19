@@ -41,20 +41,18 @@ class StandardModelTrainer:
         model: ModuleWithDevice,
         loss_fn: nn.Module,
         optimizer: torch.optim.Optimizer,
-        save_checkpoints: bool,
+        train_loader: ud.DataLoader,
+        test_loader: ud.DataLoader,
         checkpoint_dir: Path = None,
-        checkpoint_interval: int = 100,
+        epoch_start_count: int = 0,
     ):
         self.model = model
         self.loss_fn = loss_fn
         self.optimizer = optimizer
-        self.save_checkpoints = save_checkpoints
+        self.train_loader = train_loader
+        self.test_loader = test_loader
         self.checkpoint_dir = checkpoint_dir
-        self.checkpoint_interval = checkpoint_interval
-
-    @staticmethod
-    def interpret_output(model_output: torch.tensor) -> torch.tensor:
-        return torch.argmax(input=model_output, dim=1)
+        self.total_epochs = epoch_start_count
 
     @staticmethod
     def calculate_performance_metrics(
@@ -77,15 +75,14 @@ class StandardModelTrainer:
 
     def save_checkpoint(
         self,
-        epoch_num: int,
-        loss: float,
+        loss_log: list[float],
         metrics: StandardClassificationMetrics,
     ) -> Path:
         filename = f"{datetime.now()}.tar".replace(" ", "_")
         output_path = self.checkpoint_dir / filename
         output_object = {
-            "epoch_num": epoch_num,
-            "loss": loss,
+            "epoch_num": self.total_epochs,
+            "loss_log": loss_log,
             "metrics": metrics,
             "state_dict": self.model.state_dict(),
             "optimizer_state_dict": self.optimizer.state_dict(),
@@ -93,27 +90,16 @@ class StandardModelTrainer:
         torch.save(obj=output_object, f=output_path)
         return output_path
 
-    def eval_model_and_save_checkpoint(
-        self, epoch_num: int, epoch_loss: float, test_dataloader: ud.DataLoader
-    ):
-        metrics = self.evaluate_model(test_dataloader=test_dataloader)
-        self.save_checkpoint(
-            epoch_num=epoch_num, loss=epoch_loss, metrics=metrics
-        )
-        self.model.train()
-
     def train_model(
         self,
         num_epochs: int,
-        train_dataloader: ud.DataLoader,
-        test_dataloader: ud.DataLoader | None = None,
-        loss_log: list = None,
     ):
         self.model.train()
 
+        loss_log = []
         for epoch in range(num_epochs):
             running_loss = 0.0
-            for num_batches, (x, y, lengths) in enumerate(train_dataloader):
+            for num_batches, (x, y, lengths) in enumerate(self.train_loader):
                 x, y = (
                     x.to(self.model.device),
                     y.to(self.model.device),
@@ -125,21 +111,11 @@ class StandardModelTrainer:
                 self.optimizer.step()
                 running_loss += loss.item()
             epoch_loss = running_loss / (num_batches + 1)
+            loss_log.append(epoch_loss)
             # TODO move reporting work to separate method(s)
-            if loss_log is not None:
-                loss_log.append(epoch_loss)
             print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {epoch_loss:.4f}")
-            if (
-                ((epoch + 1) % self.checkpoint_interval == 0)
-                and self.save_checkpoints
-                and (test_dataloader is not None)
-                and (self.checkpoint_dir is not None)
-            ):
-                self.eval_model_and_save_checkpoint(
-                    epoch_num=epoch,
-                    epoch_loss=epoch_loss,
-                    test_dataloader=test_dataloader,
-                )
+        self.total_epochs += num_epochs
+        return loss_log
 
     @torch.no_grad()
     def evaluate_model(self, test_dataloader: ud.DataLoader):
