@@ -3,7 +3,9 @@ import torch.nn as nn
 from pathlib import Path
 from torch.utils.data import DataLoader
 from torch.utils.data.dataset import random_split
-from lstm_model_stc import LSTMSun2018
+from lstm_model_stc import (
+    BidirectionalX19LSTM,
+)
 from standard_model_trainer import StandardModelTrainer
 from weighted_dataloader_builder import WeightedDataLoaderBuilder
 from x19_mort_general_dataset import x19m_collate_fn, X19MGeneralDataset
@@ -15,7 +17,23 @@ def main():
     else:
         cur_device = torch.device("cpu")
 
-    model = LSTMSun2018()
+    input_size = 19
+    lstm_hidden_size = 128
+    fc_hidden_size = 32
+    out_features = 2
+    model_concise = nn.Sequential(
+        BidirectionalX19LSTM(
+            input_size=input_size, lstm_hidden_size=lstm_hidden_size
+        ),
+        nn.ReLU(),
+        nn.Dropout(p=0.5),
+        nn.Linear(
+            in_features=2 * lstm_hidden_size, out_features=fc_hidden_size
+        ),
+        nn.ReLU(),
+        nn.Linear(in_features=fc_hidden_size, out_features=out_features),
+        nn.Softmax(dim=1),
+    )
 
     dataset = X19MGeneralDataset.from_feaure_finalizer_output()
     train_dataset_size = int(len(dataset) * 0.8)
@@ -35,12 +53,12 @@ def main():
 
     trainer = StandardModelTrainer(
         device=cur_device,
-        model=model,
+        model=model_concise,
         train_loader=train_dataloader,
         test_loader=test_dataloader,
         loss_fn=nn.CrossEntropyLoss(),
         optimizer=torch.optim.Adam(
-            params=model.parameters(), lr=1e-4, betas=(0.5, 0.999)
+            params=model_concise.parameters(), lr=1e-4, betas=(0.5, 0.999)
         ),
         # save_checkpoints=True,
         checkpoint_dir=Path(__file__).parent.parent.parent

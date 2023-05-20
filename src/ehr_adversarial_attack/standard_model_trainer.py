@@ -102,18 +102,17 @@ class StandardModelTrainer:
         loss_log = []
         for epoch in range(num_epochs):
             running_loss = 0.0
-            for num_batches, (x, y, lengths) in enumerate(self.train_loader):
-                x, y = (
-                    x.to(self.device),
+            for num_batches, (inputs, y) in enumerate(self.train_loader):
+                inputs.features, y = (
+                    inputs.features.to(self.device),
                     y.to(self.device),
                 )
                 self.optimizer.zero_grad()
-                y_hat = self.model(x, lengths).squeeze()
+                y_hat = self.model(inputs).squeeze()
                 loss = self.loss_fn(y_hat, y)
                 loss.backward()
                 self.optimizer.step()
                 running_loss += loss.item()
-                # print(num_batches)
             epoch_loss = running_loss / (num_batches + 1)
             loss_log.append(epoch_loss)
             # TODO move reporting work to separate method(s)
@@ -127,9 +126,9 @@ class StandardModelTrainer:
         all_y_true = torch.LongTensor()
         all_y_pred = torch.LongTensor()
         all_y_score = torch.FloatTensor()
-        for x, y, lengths in self.test_loader:
-            x, y = x.to(self.device), y.to(self.device)
-            y_hat = self.model(x, lengths)
+        for num_batches, (inputs, y) in enumerate(self.train_loader):
+            inputs.features, y = inputs.features.to(self.device), y.to(self.device)
+            y_hat = self.model(inputs)
             y_pred = torch.argmax(input=y_hat, dim=1)
             all_y_true = torch.cat((all_y_true, y.to("cpu")), dim=0)
             all_y_pred = torch.cat((all_y_pred, y_pred.to("cpu")), dim=0)

@@ -1,14 +1,12 @@
 import torch
+from dataclasses import dataclass
 from dataset_with_index import DatasetWithIndex
 from pathlib import Path
 from torch.nn.utils.rnn import (
-    pack_padded_sequence,
-    pad_packed_sequence,
     pad_sequence,
-    pack_sequence,
 )
 from torch.utils.data import Dataset
-import preprocess.preprocess_input_classes as pic
+from data_structures import VariableLengthFeatures
 import project_config as pc
 import resource_io as rio
 
@@ -66,10 +64,11 @@ def x19m_collate_fn(batch):
     lengths = torch.tensor(
         [item.shape[0] for item in features], dtype=torch.long
     )
-    return padded_features, torch.tensor(labels, dtype=torch.long), lengths
+    return VariableLengthFeatures(
+        features=padded_features, lengths=lengths
+    ), torch.tensor(labels, dtype=torch.long)
+    # return padded_features, torch.tensor(labels, dtype=torch.long), lengths
 
 
 if __name__ == "__main__":
     x19_general_dataset = X19MGeneralDataset.from_feaure_finalizer_output()
-
-

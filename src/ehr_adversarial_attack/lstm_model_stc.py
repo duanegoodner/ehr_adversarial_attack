@@ -3,9 +3,9 @@ import torch.nn as nn
 from torch.nn.utils.rnn import (
     pack_padded_sequence,
     pad_packed_sequence,
-    pad_sequence,
 )
-from standard_model_trainer import ModuleWithDevice
+from data_structures import VariableLengthFeatures
+
 
 
 # use this as component in nn.Sequential of full model
@@ -25,12 +25,27 @@ class BidirectionalX19LSTM(nn.Module):
             batch_first=True,
         )
 
-    def forward(self, x: torch.tensor, lengths: torch.tensor) -> torch.tensor:
-        # convert x to PackedSequence
-        x_packed = pack_padded_sequence(
-            input=x, lengths=lengths, batch_first=True, enforce_sorted=False
+    def forward(
+        self,
+        # x: torch.tensor,
+        # lengths: torch.tensor,
+        variable_length_features: VariableLengthFeatures,
+    ) -> torch.tensor:
+        # x = variable_length_features.features
+        # lengths=variable_length_features.lengths
+
+        packed_features = pack_padded_sequence(
+            variable_length_features.features,
+            lengths=variable_length_features.lengths,
+            batch_first=True,
+            enforce_sorted=False,
         )
-        lstm_out_packed, (h_n, c_n) = self.lstm(x_packed)
+        # convert x to PackedSequence
+        # x_packed = pack_padded_sequence(
+        #     input=x, lengths=lengths, batch_first=True, enforce_sorted=False
+        # )
+        # lstm_out_packed, (h_n, c_n) = self.lstm(x_packed)
+        lstm_out_packed, (h_n, c_n) = self.lstm(packed_features)
         unpacked_lstm_out, lstm_out_lengths = pad_packed_sequence(
             sequence=lstm_out_packed, batch_first=True
         )
