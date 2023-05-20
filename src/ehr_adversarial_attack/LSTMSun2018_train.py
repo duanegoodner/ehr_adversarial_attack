@@ -35,24 +35,28 @@ def main():
 
     trainer = StandardModelTrainer(
         model=model,
-        # train_dataloader=train_dataloader,
-        # test_dataloader=test_dataloader,
+        train_loader=train_dataloader,
+        test_loader=test_dataloader,
         loss_fn=nn.CrossEntropyLoss(),
         optimizer=torch.optim.Adam(
             params=model.parameters(), lr=1e-4, betas=(0.5, 0.999)
         ),
-        save_checkpoints=True,
+        # save_checkpoints=True,
         checkpoint_dir=Path(__file__).parent.parent.parent
         / "data"
         / "training_results"
-        / "LSTM_Sun2018_x19m_6_48",
-        checkpoint_interval=10,
+        / "LSTM_Sun2018_x19m_6_48_b",
+        # checkpoint_interval=10,
     )
 
-    trainer.train_model(
-        train_dataloader=train_dataloader,
-        test_dataloader=test_dataloader,
-        num_epochs=3000,
+    # trainer.train_model(
+    #     train_dataloader=train_dataloader,
+    #     test_dataloader=test_dataloader,
+    #     num_epochs=3000,
+    # )
+
+    trainer.run_train_eval_cycles(
+        epochs_per_cycle=20, max_num_cycles=20, save_checkpoints=True
     )
 
 

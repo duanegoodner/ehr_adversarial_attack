@@ -110,6 +110,7 @@ class StandardModelTrainer:
                 loss.backward()
                 self.optimizer.step()
                 running_loss += loss.item()
+                # print(num_batches)
             epoch_loss = running_loss / (num_batches + 1)
             loss_log.append(epoch_loss)
             # TODO move reporting work to separate method(s)
@@ -118,12 +119,12 @@ class StandardModelTrainer:
         return loss_log
 
     @torch.no_grad()
-    def evaluate_model(self, test_dataloader: ud.DataLoader):
+    def evaluate_model(self):
         self.model.eval()
         all_y_true = torch.LongTensor()
         all_y_pred = torch.LongTensor()
         all_y_score = torch.FloatTensor()
-        for x, y, lengths in test_dataloader:
+        for x, y, lengths in self.test_loader:
             x, y = x.to(self.model.device), y.to(self.model.device)
             y_hat = self.model(x, lengths)
             y_pred = torch.argmax(input=y_hat, dim=1)
@@ -135,3 +136,13 @@ class StandardModelTrainer:
         )
         print(f"Predictive performance on test data:\n{metrics}\n")
         return metrics
+
+    def run_train_eval_cycles(self, epochs_per_cycle: int, max_num_cycles: int, save_checkpoints: bool=True):
+        for cycle_num in range(max_num_cycles):
+            loss_log = self.train_model(num_epochs=epochs_per_cycle)
+            eval_metrics = self.evaluate_model()
+            if save_checkpoints:
+                self.save_checkpoint(loss_log=loss_log, metrics=eval_metrics)
+
+
+
