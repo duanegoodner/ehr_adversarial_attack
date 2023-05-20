@@ -38,7 +38,8 @@ class StandardClassificationMetrics:
 class StandardModelTrainer:
     def __init__(
         self,
-        model: ModuleWithDevice,
+        device: torch.device,
+        model: nn.Module,
         loss_fn: nn.Module,
         optimizer: torch.optim.Optimizer,
         train_loader: ud.DataLoader,
@@ -46,7 +47,9 @@ class StandardModelTrainer:
         checkpoint_dir: Path = None,
         epoch_start_count: int = 0,
     ):
+        self.device = device
         self.model = model
+        self.model.to(self.device)
         self.loss_fn = loss_fn
         self.optimizer = optimizer
         self.train_loader = train_loader
@@ -101,8 +104,8 @@ class StandardModelTrainer:
             running_loss = 0.0
             for num_batches, (x, y, lengths) in enumerate(self.train_loader):
                 x, y = (
-                    x.to(self.model.device),
-                    y.to(self.model.device),
+                    x.to(self.device),
+                    y.to(self.device),
                 )
                 self.optimizer.zero_grad()
                 y_hat = self.model(x, lengths).squeeze()
@@ -125,7 +128,7 @@ class StandardModelTrainer:
         all_y_pred = torch.LongTensor()
         all_y_score = torch.FloatTensor()
         for x, y, lengths in self.test_loader:
-            x, y = x.to(self.model.device), y.to(self.model.device)
+            x, y = x.to(self.device), y.to(self.device)
             y_hat = self.model(x, lengths)
             y_pred = torch.argmax(input=y_hat, dim=1)
             all_y_true = torch.cat((all_y_true, y.to("cpu")), dim=0)

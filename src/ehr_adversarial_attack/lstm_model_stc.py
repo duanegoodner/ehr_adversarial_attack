@@ -9,14 +9,13 @@ from standard_model_trainer import ModuleWithDevice
 
 
 # use this as component in nn.Sequential of full model
-class BidirectionalX19LSTM(ModuleWithDevice):
+class BidirectionalX19LSTM(nn.Module):
     def __init__(
         self,
-        device: torch.device,
         input_size: int = 19,
         lstm_hidden_size: int = 128,
     ):
-        super(BidirectionalX19LSTM, self).__init__(device=device)
+        super(BidirectionalX19LSTM, self).__init__()
         self.input_size = input_size
         self.lstm_hidden_size = lstm_hidden_size
         self.lstm = nn.LSTM(
@@ -42,19 +41,17 @@ class BidirectionalX19LSTM(ModuleWithDevice):
         return final_lstm_out
 
 
-class LSTMSun2018(ModuleWithDevice):
+class LSTMSun2018(nn.Module):
     def __init__(
         self,
-        device: torch.device,
         input_size: int = 19,
         lstm_hidden_size: int = 128,
         fc_hidden_size: int = 32,
     ):
-        super(LSTMSun2018, self).__init__(device=device)
+        super(LSTMSun2018, self).__init__()
         self.input_size = input_size
         self.lstm_hidden_size = lstm_hidden_size
         self.lstm = BidirectionalX19LSTM(
-            device=device,
             input_size=input_size,
             lstm_hidden_size=lstm_hidden_size,
         )
@@ -67,7 +64,6 @@ class LSTMSun2018(ModuleWithDevice):
         self.act_1 = nn.ReLU()
         self.fc_2 = nn.Linear(in_features=fc_hidden_size, out_features=2)
         self.act_2 = nn.Softmax(dim=1)
-        self.to(device=device)
 
     def forward(self, x: torch.tensor, lengths: torch.tensor) -> torch.tensor:
         final_lstm_out = self.lstm(x, lengths)

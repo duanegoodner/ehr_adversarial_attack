@@ -15,7 +15,7 @@ def main():
     else:
         cur_device = torch.device("cpu")
 
-    model = LSTMSun2018(device=cur_device)
+    model = LSTMSun2018()
 
     dataset = X19MGeneralDataset.from_feaure_finalizer_output()
     train_dataset_size = int(len(dataset) * 0.8)
@@ -34,6 +34,7 @@ def main():
     )
 
     trainer = StandardModelTrainer(
+        device=cur_device,
         model=model,
         train_loader=train_dataloader,
         test_loader=test_dataloader,
