@@ -10,7 +10,8 @@ from data_structures import StandardClassificationMetrics
 class StandardModelTrainer:
     def __init__(
         self,
-        device: torch.device,
+        train_device: torch.device,
+        eval_device: torch.device,
         model: nn.Module,
         loss_fn: nn.Module,
         optimizer: torch.optim.Optimizer,
@@ -19,9 +20,10 @@ class StandardModelTrainer:
         checkpoint_dir: Path = None,
         epoch_start_count: int = 0,
     ):
-        self.device = device
+        self.train_device = train_device
+        self.eval_device = eval_device
         self.model = model
-        self.model.to(self.device)
+        # self.model.to(self.device)
         self.loss_fn = loss_fn
         self.optimizer = optimizer
         self.train_loader = train_loader
@@ -69,6 +71,7 @@ class StandardModelTrainer:
         self,
         num_epochs: int,
     ):
+        self.model.to(self.train_device)
         self.model.train()
 
         loss_log = []
@@ -76,8 +79,8 @@ class StandardModelTrainer:
             running_loss = 0.0
             for num_batches, (inputs, y) in enumerate(self.train_loader):
                 inputs.features, y = (
-                    inputs.features.to(self.device),
-                    y.to(self.device),
+                    inputs.features.to(self.train_device),
+                    y.to(self.train_device),
                 )
                 self.optimizer.zero_grad()
                 y_hat = self.model(inputs).squeeze()
@@ -94,13 +97,14 @@ class StandardModelTrainer:
 
     @torch.no_grad()
     def evaluate_model(self):
+        self.model.to(self.eval_device)
         self.model.eval()
         all_y_true = torch.LongTensor()
         all_y_pred = torch.LongTensor()
         all_y_score = torch.FloatTensor()
         for num_batches, (inputs, y) in enumerate(self.train_loader):
-            inputs.features, y = inputs.features.to(self.device), y.to(
-                self.device
+            inputs.features, y = inputs.features.to(self.eval_device), y.to(
+                self.eval_device
             )
             y_hat = self.model(inputs)
             y_pred = torch.argmax(input=y_hat, dim=1)

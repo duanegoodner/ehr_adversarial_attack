@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from optuna.trial import TrialState
 from sklearn.model_selection import StratifiedKFold
 from torch.utils.data import DataLoader, Dataset, Subset
-from typing import Callable
+from typing import Any, Callable, TypedDict
 from lstm_model_stc import BidirectionalX19LSTM
 from standard_model_trainer import StandardModelTrainer
 from weighted_dataloader_builder import (
@@ -24,6 +24,62 @@ class CVDataSets:
     validation: list[Dataset]
 
 
+@dataclass
+class TrainEvalDatasetPair:
+    train: Dataset
+    validation: Dataset
+
+
+@dataclass
+class X19LSTMHyperParameterSettings:
+    log_lstm_hidden_size: int
+    lstm_act_name: str
+    dropout: float
+    log_fc_hidden_size: int
+    fc_act_name: str
+    optimizer_name: str
+    learning_rate: float
+    log_batch_size: int
+
+
+@dataclass
+class X19MLSTMTuningRanges:
+    log_lstm_hidden_size: tuple[int, int]
+    lstm_act_options: tuple[str, ...]
+    dropout: tuple[float, float]
+    log_fc_hidden_size: tuple[int, int]
+    fc_act_options: tuple[str, ...]
+    optimizer_options: tuple[str, ...]
+    learning_rate: tuple[float, float]
+    log_batch_size: tuple[int, int]
+
+    def get_param_vals(self, trial) -> X19LSTMHyperParameterSettings:
+        return X19LSTMHyperParameterSettings(
+            log_lstm_hidden_size=trial.suggest_int(
+                "log_lstm_hidden_size", *self.log_lstm_hidden_size
+            ),
+            lstm_act_name=trial.suggest_categorical(
+                "lstm_act", list(self.lstm_act_options)
+            ),
+            dropout=trial.suggest_float("dropout", *self.dropout),
+            log_fc_hidden_size=trial.suggest_int(
+                "log_fc_hidden_size", *self.log_lstm_hidden_size
+            ),
+            fc_act_name=trial.suggest_categorical(
+                "fc_act", list(self.fc_act_options)
+            ),
+            optimizer_name=trial.suggest_categorical(
+                "optimizer", list(self.optimizer_options)
+            ),
+            learning_rate=trial.suggest_float(
+                "lr", *self.learning_rate, log=True
+            ),
+            log_batch_size=trial.suggest_int(
+                "log_batch_size", *self.log_batch_size
+            ),
+        )
+
+
 class HyperParameterTuner:
     def __init__(
         self,
@@ -31,17 +87,11 @@ class HyperParameterTuner:
         dataset: Dataset,
         collate_fn: Callable,
         num_folds: int,
+        num_cv_epochs: int,
         epochs_per_fold: int,
+        tuning_ranges: X19MLSTMTuningRanges,
         fold_class: Callable = StratifiedKFold,
         train_loader_builder=WeightedDataLoaderBuilder(),
-        log_lstm_hidden_size_range: tuple[int, int] = (5, 7),
-        lstm_act_options: tuple = ("ReLU", "Tanh"),
-        dropout_range: tuple[float, float] = (0, 0.5),
-        log_fc_hidden_size_range: tuple[int, int] = (4, 8),
-        fc_act_options: tuple = ("ReLU", "Tanh"),
-        optimizer_options: tuple = ("Adam", "RMSprop", "SGD"),
-        learning_rate_range: tuple[float, float] = (1e-5, 1e-1),
-        log_batch_size_range: tuple[int, int] = (5, 8),
         fold_generator_builder_random_seed: int = 1234,
         weighted_dataloader_random_seed: int = 22,
         loss_fn: nn.Module = nn.CrossEntropyLoss(),
@@ -51,6 +101,7 @@ class HyperParameterTuner:
         self.dataset = dataset
         self.collate_fn = collate_fn
         self.num_folds = num_folds
+        self.num_cv_epochs = num_cv_epochs
         self.epochs_per_fold = epochs_per_fold
         self.fold_class = fold_class
         self.fold_generator_random_seed = fold_generator_builder_random_seed
@@ -61,66 +112,17 @@ class HyperParameterTuner:
         )
         self.cv_datasets = self.create_datasets()
         self.train_loader_builder = train_loader_builder
-        self.log_lstm_hidden_size_range = log_lstm_hidden_size_range
-        self.lstm_act_options = lstm_act_options
-        self.dropout_range = dropout_range
-        self.log_fc_hidden_size_range = log_fc_hidden_size_range
-        self.fc_act_options = fc_act_options
-        self.learning_rate_range = learning_rate_range
-        self.log_batch_size_range = log_batch_size_range
-        self.optimizer_options = optimizer_options
-        self.weighted_dataloader_random_seed = weighted_dataloader_random_seed
         self.loss_fn = loss_fn
         self.performance_metric = performance_metric
+        self.tuning_ranges = tuning_ranges
+        self.weighted_dataloader_random_seed = weighted_dataloader_random_seed
 
-    def define_model(self, trial):
-        log_lstm_hidden_size = trial.suggest_int(
-            "log_lstm_hidden_size", *self.log_lstm_hidden_size_range
-        )
-        lstm_act_name = trial.suggest_categorical(
-            "lstm_act", list(self.lstm_act_options)
-        )
-        log_fc_hidden_size = trial.suggest_int(
-            "log_fc_hidden_size", *self.log_lstm_hidden_size_range
-        )
-        fc_act_name = trial.suggest_categorical(
-            "fc_act", list(self.fc_act_options)
-        )
-
-        dropout = trial.suggest_float(
-            "dropout", *self.dropout_range, log=False
-        )
-
-        return nn.Sequential(
-            BidirectionalX19LSTM(
-                input_size=19, lstm_hidden_size=2**log_lstm_hidden_size
-            ),
-            getattr(nn, lstm_act_name)(),
-            nn.Dropout(p=dropout),
-            nn.Linear(
-                in_features=2 * (2**log_lstm_hidden_size),
-                out_features=2**log_fc_hidden_size,
-            ),
-            getattr(nn, fc_act_name)(),
-            nn.Linear(in_features=2**log_fc_hidden_size, out_features=2),
-            nn.Softmax(dim=1),
-        )
-
-    @staticmethod
-    def initialize_model(model: nn.Module):
-        for name, param in model.named_parameters():
-            if "weight" in name:
-                nn.init.xavier_normal_(param)
-            elif "bias" in name:
-                nn.init.constant_(param, 0.0)
-
-    def create_datasets(self):
+    def create_datasets(self) -> list[TrainEvalDatasetPair]:
         fold_generator = self.fold_generator_builder.split(
             self.dataset[:][0], self.dataset[:][1]
         )
 
-        all_train_datasets = []
-        all_validation_datasets = []
+        all_train_eval_pairs = []
 
         for fold_idx, (train_indices, validation_indices) in enumerate(
             fold_generator
@@ -129,57 +131,87 @@ class HyperParameterTuner:
             validation_dataset = Subset(
                 dataset=self.dataset, indices=validation_indices
             )
-            all_train_datasets.append(train_dataset)
-            all_validation_datasets.append(validation_dataset)
+            all_train_eval_pairs.append(
+                TrainEvalDatasetPair(
+                    train=train_dataset, validation=validation_dataset
+                )
+            )
 
-        return CVDataSets(
-            train=all_train_datasets, validation=all_validation_datasets
+        return all_train_eval_pairs
+
+    @staticmethod
+    def define_model(settings: X19LSTMHyperParameterSettings):
+        return nn.Sequential(
+            BidirectionalX19LSTM(
+                input_size=19,
+                lstm_hidden_size=2**settings.log_lstm_hidden_size,
+            ),
+            getattr(nn, settings.lstm_act_name)(),
+            nn.Dropout(p=settings.dropout),
+            nn.Linear(
+                in_features=2 * (2**settings.log_lstm_hidden_size),
+                out_features=2**settings.log_fc_hidden_size,
+            ),
+            getattr(nn, settings.fc_act_name)(),
+            nn.Linear(
+                in_features=2**settings.log_fc_hidden_size, out_features=2
+            ),
+            nn.Softmax(dim=1),
         )
 
-    def objective_fn(self, trial):
-        model = self.define_model(trial)
-        lr = trial.suggest_float("lr", *self.learning_rate_range, log=True)
-        optimizer_name = trial.suggest_categorical(
-            "optimizer", list(self.optimizer_options)
-        )
-        optimizer = getattr(torch.optim, optimizer_name)(
-            model.parameters(), lr=lr
-        )
-        log_batch_size = trial.suggest_int(
-            "log_batch_size", *self.log_batch_size_range
-        )
+    def create_trainers(self, trial):
+        settings = self.tuning_ranges.get_param_vals(trial)
 
-        all_folds_metric_of_interest = []
-
-        torch.manual_seed(self.weighted_dataloader_random_seed)
-        for fold_idx in range(self.num_folds):
-            self.initialize_model(model=model)
+        trainers = []
+        for dataset_pair in self.cv_datasets:
+            model = self.define_model(settings=settings)
             train_loader = self.train_loader_builder.build(
-                dataset=self.cv_datasets.train[fold_idx],
-                batch_size=2**log_batch_size,
+                dataset=dataset_pair.train,
+                batch_size=2**settings.log_batch_size,
                 collate_fn=self.collate_fn,
             )
             validation_loader = DataLoader(
-                dataset=self.cv_datasets.validation[fold_idx],
+                dataset=dataset_pair.validation,
                 batch_size=128,
                 shuffle=False,
                 collate_fn=self.collate_fn,
             )
+
             trainer = StandardModelTrainer(
-                device=self.device,
+                train_device=self.device,
+                eval_device=self.device,
                 model=model,
                 loss_fn=self.loss_fn,
-                optimizer=optimizer,
+                optimizer=getattr(torch.optim, settings.optimizer_name)(
+                    model.parameters(), lr=settings.learning_rate
+                ),
                 train_loader=train_loader,
                 test_loader=validation_loader,
             )
-            trainer.train_model(num_epochs=self.epochs_per_fold)
-            metrics = trainer.evaluate_model()
-            metric_of_interest = getattr(metrics, self.performance_metric)
-            all_folds_metric_of_interest.append(metric_of_interest)
-        return np.mean(all_folds_metric_of_interest)
 
-    def tune(self, n_trials: int = 10, timeout: int = 600):
+            trainers.append(trainer)
+
+        return trainers
+
+    def objective_fn(self, trial):
+        trainers = self.create_trainers(trial)
+        all_folds_metric_of_interest = torch.zeros(
+            self.num_folds, dtype=torch.float32
+        )
+        for cv_epoch_idx in range(self.num_cv_epochs):
+            for trainer_idx, trainer in enumerate(trainers):
+                trainer.train_model(num_epochs=self.epochs_per_fold)
+                metrics = trainer.evaluate_model()
+                metric_of_interest = getattr(metrics, self.performance_metric)
+                all_folds_metric_of_interest[trainer_idx] += metric_of_interest
+                trainer.model.to("cpu")
+
+        return (
+            torch.mean(all_folds_metric_of_interest).item()
+            / self.num_cv_epochs
+        )
+
+    def tune(self, n_trials: int = 10, timeout: int | None = None):
         study = optuna.create_study(direction="maximize")
         study.optimize(
             func=self.objective_fn, n_trials=n_trials, timeout=timeout
