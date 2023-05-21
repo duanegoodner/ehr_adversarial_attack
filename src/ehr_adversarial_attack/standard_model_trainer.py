@@ -2,9 +2,9 @@ import sklearn.metrics as skm
 import torch.nn as nn
 import torch.optim
 import torch.utils.data as ud
-from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from data_structures import StandardClassificationMetrics
 
 
 # TODO Separate Trainer and Evaluator in to two classes
@@ -17,22 +17,22 @@ class ModuleWithDevice(nn.Module):
         self.to(device)
 
 
-@dataclass
-class StandardClassificationMetrics:
-    accuracy: float
-    roc_auc: float
-    precision: float
-    recall: float
-    f1: float
-
-    def __str__(self) -> str:
-        return (
-            f"Accuracy:\t{self.accuracy:.4f}\n"
-            f"AUC:\t\t{self.roc_auc:.4f}\n"
-            f"Precision:\t{self.precision:.4f}\n"
-            f"Recall:\t\t{self.recall:.4f}\n"
-            f"F1:\t\t\t{self.f1:.4f}"
-        )
+# @dataclass
+# class StandardClassificationMetrics:
+#     accuracy: float
+#     roc_auc: float
+#     precision: float
+#     recall: float
+#     f1: float
+#
+#     def __str__(self) -> str:
+#         return (
+#             f"Accuracy:\t{self.accuracy:.4f}\n"
+#             f"AUC:\t\t{self.roc_auc:.4f}\n"
+#             f"Precision:\t{self.precision:.4f}\n"
+#             f"Recall:\t\t{self.recall:.4f}\n"
+#             f"F1:\t\t\t{self.f1:.4f}"
+#         )
 
 
 class StandardModelTrainer:
@@ -127,7 +127,9 @@ class StandardModelTrainer:
         all_y_pred = torch.LongTensor()
         all_y_score = torch.FloatTensor()
         for num_batches, (inputs, y) in enumerate(self.train_loader):
-            inputs.features, y = inputs.features.to(self.device), y.to(self.device)
+            inputs.features, y = inputs.features.to(self.device), y.to(
+                self.device
+            )
             y_hat = self.model(inputs)
             y_pred = torch.argmax(input=y_hat, dim=1)
             all_y_true = torch.cat((all_y_true, y.to("cpu")), dim=0)
@@ -139,12 +141,14 @@ class StandardModelTrainer:
         print(f"Predictive performance on test data:\n{metrics}\n")
         return metrics
 
-    def run_train_eval_cycles(self, epochs_per_cycle: int, max_num_cycles: int, save_checkpoints: bool=True):
+    def run_train_eval_cycles(
+        self,
+        epochs_per_cycle: int,
+        max_num_cycles: int,
+        save_checkpoints: bool = True,
+    ):
         for cycle_num in range(max_num_cycles):
             loss_log = self.train_model(num_epochs=epochs_per_cycle)
             eval_metrics = self.evaluate_model()
             if save_checkpoints:
                 self.save_checkpoint(loss_log=loss_log, metrics=eval_metrics)
-
-
-

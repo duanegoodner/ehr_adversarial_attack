@@ -27,12 +27,8 @@ class BidirectionalX19LSTM(nn.Module):
 
     def forward(
         self,
-        # x: torch.tensor,
-        # lengths: torch.tensor,
         variable_length_features: VariableLengthFeatures,
     ) -> torch.tensor:
-        # x = variable_length_features.features
-        # lengths=variable_length_features.lengths
 
         packed_features = pack_padded_sequence(
             variable_length_features.features,
@@ -40,16 +36,10 @@ class BidirectionalX19LSTM(nn.Module):
             batch_first=True,
             enforce_sorted=False,
         )
-        # convert x to PackedSequence
-        # x_packed = pack_padded_sequence(
-        #     input=x, lengths=lengths, batch_first=True, enforce_sorted=False
-        # )
-        # lstm_out_packed, (h_n, c_n) = self.lstm(x_packed)
         lstm_out_packed, (h_n, c_n) = self.lstm(packed_features)
         unpacked_lstm_out, lstm_out_lengths = pad_packed_sequence(
             sequence=lstm_out_packed, batch_first=True
         )
-        # select final hidden state from each sequence
         final_lstm_out = unpacked_lstm_out[
             torch.arange(unpacked_lstm_out.shape[0]), lstm_out_lengths - 1, :
         ].squeeze()
