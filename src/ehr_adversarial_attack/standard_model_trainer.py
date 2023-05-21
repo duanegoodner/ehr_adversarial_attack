@@ -7,34 +7,6 @@ from pathlib import Path
 from data_structures import StandardClassificationMetrics
 
 
-# TODO Separate Trainer and Evaluator in to two classes
-
-
-class ModuleWithDevice(nn.Module):
-    def __init__(self, device: torch.device):
-        super(ModuleWithDevice, self).__init__()
-        self.device = device
-        self.to(device)
-
-
-# @dataclass
-# class StandardClassificationMetrics:
-#     accuracy: float
-#     roc_auc: float
-#     precision: float
-#     recall: float
-#     f1: float
-#
-#     def __str__(self) -> str:
-#         return (
-#             f"Accuracy:\t{self.accuracy:.4f}\n"
-#             f"AUC:\t\t{self.roc_auc:.4f}\n"
-#             f"Precision:\t{self.precision:.4f}\n"
-#             f"Recall:\t\t{self.recall:.4f}\n"
-#             f"F1:\t\t\t{self.f1:.4f}"
-#         )
-
-
 class StandardModelTrainer:
     def __init__(
         self,

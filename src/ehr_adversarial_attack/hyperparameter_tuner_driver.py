@@ -13,8 +13,8 @@ def main():
         device=cur_device,
         dataset=X19MGeneralDataset.from_feaure_finalizer_output(),
         collate_fn=x19m_collate_fn,
-        num_folds=2,
-        epochs_per_fold=2
+        num_folds=3,
+        epochs_per_fold=5
     )
 
     tuner.tune(n_trials=5, timeout=600)

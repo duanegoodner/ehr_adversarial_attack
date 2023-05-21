@@ -1,4 +1,9 @@
 import numpy as np
+import optuna
+import torch
+import torch.nn as nn
+from dataclasses import dataclass
+from optuna.trial import TrialState
 from sklearn.model_selection import StratifiedKFold
 from torch.utils.data import DataLoader, Dataset, Subset
 from typing import Callable
@@ -8,16 +13,15 @@ from weighted_dataloader_builder import (
     DataLoaderBuilder,
     WeightedDataLoaderBuilder,
 )
-
-
 import os
-
-import optuna
-from optuna.trial import TrialState
-import torch
-import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+
+
+@dataclass
+class CVDataSets:
+    train: list[Dataset]
+    validation: list[Dataset]
 
 
 class HyperParameterTuner:
@@ -55,9 +59,7 @@ class HyperParameterTuner:
             shuffle=True,
             random_state=fold_generator_builder_random_seed,
         )
-        self.fold_generator = self.fold_generator_builder.split(
-            dataset[:][0], dataset[:][1]
-        )
+        self.cv_datasets = self.create_datasets()
         self.train_loader_builder = train_loader_builder
         self.log_lstm_hidden_size_range = log_lstm_hidden_size_range
         self.lstm_act_options = lstm_act_options
@@ -112,10 +114,29 @@ class HyperParameterTuner:
             elif "bias" in name:
                 nn.init.constant_(param, 0.0)
 
-    def objective_fn(self, trial):
+    def create_datasets(self):
         fold_generator = self.fold_generator_builder.split(
             self.dataset[:][0], self.dataset[:][1]
         )
+
+        all_train_datasets = []
+        all_validation_datasets = []
+
+        for fold_idx, (train_indices, validation_indices) in enumerate(
+            fold_generator
+        ):
+            train_dataset = Subset(dataset=self.dataset, indices=train_indices)
+            validation_dataset = Subset(
+                dataset=self.dataset, indices=validation_indices
+            )
+            all_train_datasets.append(train_dataset)
+            all_validation_datasets.append(validation_dataset)
+
+        return CVDataSets(
+            train=all_train_datasets, validation=all_validation_datasets
+        )
+
+    def objective_fn(self, trial):
         model = self.define_model(trial)
         lr = trial.suggest_float("lr", *self.learning_rate_range, log=True)
         optimizer_name = trial.suggest_categorical(
@@ -131,21 +152,15 @@ class HyperParameterTuner:
         all_folds_metric_of_interest = []
 
         torch.manual_seed(self.weighted_dataloader_random_seed)
-        for fold_idx, (train_indices, test_indices) in enumerate(
-            fold_generator
-        ):
+        for fold_idx in range(self.num_folds):
             self.initialize_model(model=model)
-            train_dataset = Subset(dataset=self.dataset, indices=train_indices)
             train_loader = self.train_loader_builder.build(
-                dataset=train_dataset,
+                dataset=self.cv_datasets.train[fold_idx],
                 batch_size=2**log_batch_size,
                 collate_fn=self.collate_fn,
             )
-            validation_dataset = Subset(
-                dataset=self.dataset, indices=test_indices
-            )
             validation_loader = DataLoader(
-                dataset=validation_dataset,
+                dataset=self.cv_datasets.validation[fold_idx],
                 batch_size=128,
                 shuffle=False,
                 collate_fn=self.collate_fn,
