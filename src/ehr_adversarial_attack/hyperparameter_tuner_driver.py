@@ -1,6 +1,13 @@
+import time
 import torch
 from x19_mort_general_dataset import x19m_collate_fn, X19MGeneralDataset
-from hyperparameter_tuner import HyperParameterTuner, X19MLSTMTuningRanges
+from hyperparameter_tuner import (
+    HyperParameterTuner,
+    optuna_report,
+    ray_tune_report,
+    X19MLSTMTuningRanges,
+    X19LSTMHyperParameterSettings,
+)
 
 
 my_tuning_ranges = X19MLSTMTuningRanges(
@@ -28,17 +35,19 @@ def main():
         num_folds=5,
         num_cv_epochs=2,
         epochs_per_fold=5,
-        tuning_ranges=my_tuning_ranges
+        tuning_ranges=my_tuning_ranges,
+        setting_retriever=X19LSTMHyperParameterSettings.from_optuna,
+        metric_reporter=optuna_report,
+        return_metric_from_objective=True
     )
 
-    tuner.tune(n_trials=15, timeout=None)
+    tuner.optuna_tune(n_trials=20, timeout=None)
 
 
 if __name__ == "__main__":
+    ray_tune_config = my_tuning_ranges.to_ray_tune_config()
+    start = time.time()
     main()
+    end = time.time()
 
-
-
-
-
-
+    print(f"total time = {end - start}")
