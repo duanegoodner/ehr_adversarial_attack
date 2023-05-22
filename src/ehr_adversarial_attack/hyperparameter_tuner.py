@@ -1,22 +1,23 @@
-import numpy as np
 import optuna
 import torch
 import torch.nn as nn
 from dataclasses import dataclass
-from enum import Enum, auto
+from datetime import datetime
+from optuna.pruners import MedianPruner
+from optuna.samplers import TPESampler
 from optuna.trial import TrialState
+from pathlib import Path
 from sklearn.model_selection import StratifiedKFold
 from torch.utils.data import DataLoader, Dataset, Subset
-from typing import Any, Callable, NoReturn, TypedDict
+from typing import Callable
+import project_config as pc
+import resource_io as rio
 from lstm_model_stc import BidirectionalX19LSTM
 from standard_model_trainer import StandardModelTrainer
 from weighted_dataloader_builder import (
     DataLoaderBuilder,
     WeightedDataLoaderBuilder,
 )
-from ray import tune
-from ray.air import session
-from ray.tune.search.optuna import OptunaSearch
 import os
 import torch.nn.functional as F
 import torch.optim as optim
@@ -45,46 +46,6 @@ class X19MLSTMTuningRanges:
     learning_rate: tuple[float, float]
     log_batch_size: tuple[int, int]
 
-    def to_ray_tune_config(self) -> dict[str, Any]:
-        return {
-            "log_lstm_hidden_size": tune.choice(
-                categories=[
-                    i
-                    for i in range(
-                        self.log_lstm_hidden_size[0],
-                        self.log_lstm_hidden_size[1] + 1,
-                    )
-                ]
-            ),
-            "lstm_act_name": tune.choice(
-                categories=list(self.lstm_act_options)
-            ),
-            "dropout": tune.uniform(
-                lower=self.dropout[0], upper=self.dropout[1]
-            ),
-            "log_fc_hidden_size": tune.choice(
-                categories=[
-                    i
-                    for i in range(
-                        self.log_fc_hidden_size[0],
-                        self.log_fc_hidden_size[1] + 1,
-                    )
-                ]
-            ),
-            "fc_act_name": tune.choice(categories=list(self.fc_act_options)),
-            "optimizer_name": tune.choice(
-                categories=list(self.optimizer_options)
-            ),
-            "learning_rate": tune.loguniform(*self.learning_rate),
-            "log_batch_size": tune.choice(
-                categories=[
-                    i
-                    for i in range(
-                        self.log_batch_size[0], self.log_batch_size[1] + 1
-                    )
-                ]
-            ),
-        }
 
 @dataclass
 class X19LSTMHyperParameterSettings:
@@ -125,18 +86,6 @@ class X19LSTMHyperParameterSettings:
             ),
         )
 
-    @classmethod
-    def from_ray_tune(cls, ):
-        pass
-
-
-def optuna_report(trial, metric_val: float, cv_epoch: int, *args, **kwargs):
-    trial.report(metric_val, cv_epoch)
-
-
-def ray_tune_report(metric_name: str, metric_val: float, *args, **kwargs):
-    session.report(metrics={metric_name: metric_val})
-
 
 class HyperParameterTuner:
     def __init__(
@@ -144,25 +93,25 @@ class HyperParameterTuner:
         device: torch.device,
         dataset: Dataset,
         collate_fn: Callable,
+        num_trials: int,
         num_folds: int,
         num_cv_epochs: int,
         epochs_per_fold: int,
         tuning_ranges: dataclass,
-        setting_retriever: Callable[
-            [object, X19MLSTMTuningRanges], X19LSTMHyperParameterSettings
-        ],
-        metric_reporter: Callable[..., NoReturn],
-        return_metric_from_objective: bool,
         fold_class: Callable = StratifiedKFold,
         train_loader_builder=WeightedDataLoaderBuilder(),
         fold_generator_builder_random_seed: int = 1234,
         weighted_dataloader_random_seed: int = 22,
         loss_fn: nn.Module = nn.CrossEntropyLoss(),
         performance_metric: str = "roc_auc",
+        sampler: optuna.samplers.BaseSampler = TPESampler(),
+        pruner: optuna.pruners.BasePruner = MedianPruner(),
+        output_dir: Path = None,
     ):
         self.device = device
         self.dataset = dataset
         self.collate_fn = collate_fn
+        self.num_trials = num_trials
         self.num_folds = num_folds
         self.num_cv_epochs = num_cv_epochs
         self.epochs_per_fold = epochs_per_fold
@@ -180,10 +129,20 @@ class HyperParameterTuner:
         self.loss_fn = loss_fn
         self.performance_metric = performance_metric
         self.tuning_ranges = tuning_ranges
-        self.setting_retriever = setting_retriever
-        self.return_metric_from_objective = return_metric_from_objective
-        self.metric_reporter = metric_reporter
         self.weighted_dataloader_random_seed = weighted_dataloader_random_seed
+        self.sampler = sampler
+        self.pruner = pruner
+        self.output_dir = self.initialize_output_dir(output_dir=output_dir)
+        self.exporter = rio.ResourceExporter()
+
+    @staticmethod
+    def initialize_output_dir(output_dir: Path = None) -> Path:
+        if output_dir is None:
+            dirname = f"{datetime.now()}".replace(" ", "_")
+            output_dir = pc.HYPERPARAMETER_TUNING_OUT_DIR / dirname
+        assert not output_dir.exists()
+        output_dir.mkdir()
+        return output_dir
 
     def create_datasets(self) -> list[TrainEvalDatasetPair]:
         fold_generator = self.fold_generator_builder.split(
@@ -260,7 +219,9 @@ class HyperParameterTuner:
         return trainers
 
     def objective_fn(self, trial) -> float | None:
-        settings = self.setting_retriever(trial, self.tuning_ranges)
+        settings = X19LSTMHyperParameterSettings.from_optuna(
+            trial=trial, tuning_ranges=self.tuning_ranges
+        )
         trainers = self.create_trainers(settings)
         all_folds_metric_of_interest = torch.zeros(
             self.num_folds, dtype=torch.float32
@@ -274,33 +235,28 @@ class HyperParameterTuner:
                 trainer.train_model(num_epochs=self.epochs_per_fold)
                 metrics = trainer.evaluate_model()
                 metric_of_interest = getattr(metrics, self.performance_metric)
-                all_folds_metric_of_interest[trainer_idx] += metric_of_interest
+                all_folds_metric_of_interest[trainer_idx] = metric_of_interest
                 trainer.model.to("cpu")
 
             trial.report(
-                torch.mean(all_folds_metric_of_interest).item()
-                / self.num_cv_epochs,
+                torch.mean(all_folds_metric_of_interest).item(),
                 cv_epoch_idx,
             )
 
-            self.metric_reporter(
-                trial=trial,
-                metric_name=self.performance_metric,
-                cv_epoch=cv_epoch_idx,
-                metric_val=torch.mean(all_folds_metric_of_interest).item()
-                / self.num_cv_epochs
-            )
+            if trial.should_prune():
+                raise optuna.exceptions.TrialPruned()
 
-        if self.return_metric_from_objective:
-            return (
-                torch.mean(all_folds_metric_of_interest).item()
-                / self.num_cv_epochs
-            )
+        return (
+            torch.mean(all_folds_metric_of_interest).item()
+            / self.num_cv_epochs
+        )
 
-    def optuna_tune(self, n_trials: int = 10, timeout: int | None = None):
-        study = optuna.create_study(direction="maximize")
+    def tune(self, timeout: int | None = None) -> optuna.Study:
+        study = optuna.create_study(
+            direction="maximize", sampler=self.sampler, pruner=self.pruner
+        )
         study.optimize(
-            func=self.objective_fn, n_trials=n_trials, timeout=timeout
+            func=self.objective_fn, n_trials=self.num_trials, timeout=timeout
         )
 
         pruned_trials = study.get_trials(
@@ -314,7 +270,6 @@ class HyperParameterTuner:
         print("  Number of finished trials: ", len(study.trials))
         print("  Number of pruned trials: ", len(pruned_trials))
         print("  Number of complete trials: ", len(complete_trials))
-
         print("Best trial:")
         trial = study.best_trial
 
@@ -323,3 +278,17 @@ class HyperParameterTuner:
         print("  Params: ")
         for key, value in trial.params.items():
             print("    {}: {}".format(key, value))
+
+        timestamp = str(datetime.now()).replace(" ", "_")
+        study_filename = f"optuna_study_{timestamp}.pickle"
+        study_export_path = self.output_dir / study_filename
+        self.exporter.export(resource=study, path=study_export_path)
+        hyperparameter_tuner_filename = (
+            f"hyperparameter_tuner_{timestamp}.pickle"
+        )
+        hyperparameter_tuner_path = (
+            self.output_dir / hyperparameter_tuner_filename
+        )
+        self.exporter.export(resource=self, path=hyperparameter_tuner_path)
+
+        return study
