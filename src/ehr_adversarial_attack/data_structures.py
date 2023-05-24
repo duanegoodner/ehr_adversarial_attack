@@ -14,7 +14,7 @@ class VariableLengthFeatures:
 @dataclass
 class ClassificationScores:
     accuracy: float
-    roc_auc: float
+    AUC: float
     precision: float
     recall: float
     f1: float
@@ -22,7 +22,7 @@ class ClassificationScores:
     def __str__(self) -> str:
         return (
             f"Accuracy:\t{self.accuracy:.4f}\n"
-            f"AUC:\t\t{self.roc_auc:.4f}\n"
+            f"AUC:\t\t{self.AUC:.4f}\n"
             f"Precision:\t{self.precision:.4f}\n"
             f"Recall:\t\t{self.recall:.4f}\n"
             f"F1:\t\t\t{self.f1:.4f}"
@@ -33,7 +33,7 @@ class ClassificationScores:
 class EvalResults:
     loss: float
     accuracy: float
-    roc_auc: float
+    AUC: float
     precision: float
     recall: float
     f1: float
@@ -43,7 +43,7 @@ class EvalResults:
         return cls(
             loss=loss,
             accuracy=scores.accuracy,
-            roc_auc=scores.roc_auc,
+            AUC=scores.AUC,
             precision=scores.precision,
             recall=scores.recall,
             f1=scores.f1,
@@ -51,9 +51,9 @@ class EvalResults:
 
     def __str__(self) -> str:
         return (
-            f"Loss:\t{self.loss:.4f}"
+            f"Loss:\t\t{self.loss:.4f}\n"
             f"Accuracy:\t{self.accuracy:.4f}\n"
-            f"AUC:\t\t{self.roc_auc:.4f}\n"
+            f"AUC:\t\t{self.AUC:.4f}\n"
             f"Precision:\t{self.precision:.4f}\n"
             f"Recall:\t\t{self.recall:.4f}\n"
             f"F1:\t\t\t{self.f1:.4f}"

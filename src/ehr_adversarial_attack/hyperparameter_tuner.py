@@ -106,11 +106,11 @@ class HyperParameterTuner:
         fold_generator_builder_random_seed: int = 1234,
         weighted_dataloader_random_seed: int = 22,
         loss_fn: nn.Module = nn.CrossEntropyLoss(),
-        performance_metric: str = "roc_auc",
+        performance_metric: str = "AUC",
         sampler: optuna.samplers.BaseSampler = TPESampler(),
         pruner: optuna.pruners.BasePruner = MedianPruner(),
         output_dir: Path = None,
-        save_trial_info: bool = False
+        save_trial_info: bool = False,
     ):
         self.device = device
         self.dataset = dataset
@@ -265,8 +265,8 @@ class HyperParameterTuner:
                 train_loader=train_loader,
                 test_loader=validation_loader,
                 summary_writer=summary_writer,
-                summary_writer_group=str(trial_number),
-                summary_writer_subgroup=str(fold_idx),
+                summary_writer_group=f"trial_{trial_number}",
+                summary_writer_subgroup=f"fold_{fold_idx}",
                 checkpoint_dir=self.output_dir / "checkpoints",
             )
 
@@ -305,15 +305,19 @@ class HyperParameterTuner:
         )
 
         all_epoch_eval_results = []
+        # TODO change names to reflect that these are means
         all_epoch_metric_of_interest = []
+        all_epoch_loss = []
 
         # TODO: think more abot this seed. Is it needed???
         # Do we want each trial to have same sample selection pattern?
         # torch.manual_seed(self.weighted_dataloader_random_seed)
 
+        # TODO refactor this
         for cv_epoch in range(self.num_cv_epochs):
             epoch_results = []
             all_folds_metric_of_interest = []
+            all_folds_loss = []
             for fold_idx, trainer in enumerate(trainers):
                 trainer.train_model(num_epochs=self.epochs_per_fold)
                 eval_results = trainer.evaluate_model()
@@ -321,10 +325,24 @@ class HyperParameterTuner:
                 all_folds_metric_of_interest.append(
                     getattr(eval_results, self.performance_metric)
                 )
+                all_folds_loss.append(
+                    eval_results.loss
+                )
                 trainer.model.to("cpu")
             all_epoch_eval_results.append(epoch_results)
             all_epoch_metric_of_interest.append(
                 np.mean(all_folds_metric_of_interest)
+            )
+            all_epoch_loss.append(np.mean(all_folds_loss))
+
+            summary_writer.add_scalar(
+                f"trial_{trial.number}/{self.performance_metric}_mean",
+                np.mean(all_folds_metric_of_interest),
+                (cv_epoch + 1) * self.epochs_per_fold,
+            )
+            summary_writer.add_scalar(
+                f"trial_{trial.number}/validation_loss_mean",
+                np.mean(all_epoch_loss), (cv_epoch + 1) * self.epochs_per_fold
             )
 
         if self.save_trial_info:

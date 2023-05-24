@@ -64,7 +64,7 @@ class StandardModelTrainer:
 
         return ClassificationScores(
             accuracy=skm.accuracy_score(y_true=y_true_np, y_pred=y_pred_np),
-            roc_auc=skm.roc_auc_score(
+            AUC=skm.roc_auc_score(
                 y_true=y_true_one_hot, y_score=y_score_np
             ),
             precision=skm.precision_score(y_true=y_true_np, y_pred=y_pred_np),
@@ -110,20 +110,24 @@ class StandardModelTrainer:
                 loss.backward()
                 self.optimizer.step()
                 running_loss += loss.item()
-            self.completed_epochs += 1
             epoch_loss = running_loss / (num_batches + 1)
-            self.report_epoch_loss(epoch_loss=epoch_loss)
+            if self.completed_epochs > 0:
+                self.report_epoch_loss(epoch_loss=epoch_loss)
+            self.completed_epochs += 1
 
     def report_epoch_loss(self, epoch_loss: float):
-        print(f"Epoch {self.completed_epochs}, Loss: {epoch_loss:.4f}")
+        print(
+            f"{self.summary_writer_subgroup}, epoch_{self.completed_epochs},"
+            f" Loss: {epoch_loss:.4f}"
+        )
         self.train_log.append(
             TrainLogEntry(epoch=self.completed_epochs, loss=epoch_loss)
         )
         if self.summary_writer is not None:
             self.summary_writer.add_scalars(
-                f"group_{self.summary_writer_group}/training_loss",
+                f"{self.summary_writer_group}/training_loss",
                 {
-                    f"subgroup_{self.summary_writer_subgroup}": epoch_loss,
+                    f"{self.summary_writer_subgroup}": epoch_loss,
                 },
                 self.completed_epochs,
             )
@@ -164,7 +168,7 @@ class StandardModelTrainer:
         self,
         eval_results: EvalResults,
     ):
-        print(f"Performance on test data:\n{eval_results}\n")
+        print(f"\n{self.summary_writer_subgroup} performance on test data:\n{eval_results}\n")
         self.eval_log.append(
             EvalLogEntry(
                 epoch=self.completed_epochs, eval_results=eval_results
@@ -172,20 +176,14 @@ class StandardModelTrainer:
         )
         if self.summary_writer is not None:
             self.summary_writer.add_scalars(
-                f"group_{self.summary_writer_group}/AUC",
-                {
-                    f"subgroup_{self.summary_writer_subgroup}": (
-                        eval_results.roc_auc
-                    )
-                },
+                f"{self.summary_writer_group}/AUC",
+                {f"{self.summary_writer_subgroup}": eval_results.AUC},
                 self.completed_epochs,
             )
             self.summary_writer.add_scalars(
-                f"group_{self.summary_writer_group}/validation_loss",
+                f"{self.summary_writer_group}/validation_loss",
                 {
-                    f"subgroup_{self.summary_writer_subgroup}": (
-                        eval_results.loss
-                    ),
+                    f"{self.summary_writer_subgroup}": eval_results.loss,
                 },
                 self.completed_epochs,
             )
