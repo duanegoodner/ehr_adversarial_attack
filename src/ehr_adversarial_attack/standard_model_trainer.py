@@ -2,9 +2,28 @@ import sklearn.metrics as skm
 import torch.nn as nn
 import torch.optim
 import torch.utils.data as ud
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from data_structures import StandardClassificationMetrics
+from torch.utils.tensorboard import SummaryWriter
+from typing import NamedTuple
+from data_structures import EvalResults, ClassificationScores
+
+
+class TrainLogEntry(NamedTuple):
+    epoch: int
+    loss: float
+
+
+class EvalLogEntry(NamedTuple):
+    epoch: int
+    eval_results: EvalResults
+
+
+@dataclass
+class TrainEvalLogs:
+    train: list[TrainLogEntry]
+    eval: list[EvalLogEntry]
 
 
 class StandardModelTrainer:
@@ -19,28 +38,44 @@ class StandardModelTrainer:
         test_loader: ud.DataLoader,
         checkpoint_dir: Path = None,
         epoch_start_count: int = 0,
+        train_log: list[TrainLogEntry] = None,
+        eval_log: list[EvalLogEntry] = None,
+        summary_writer: SummaryWriter = None,
+        summary_writer_group: str = "",
+        summary_writer_subgroup: str = "",
     ):
         self.train_device = train_device
         self.eval_device = eval_device
         self.model = model
-        # self.model.to(self.device)
         self.loss_fn = loss_fn
         self.optimizer = optimizer
         self.train_loader = train_loader
         self.test_loader = test_loader
         self.checkpoint_dir = checkpoint_dir
-        self.total_epochs = epoch_start_count
+        if not checkpoint_dir.exists():
+            checkpoint_dir.mkdir()
+        self.completed_epochs = epoch_start_count
+        self.summary_writer = summary_writer
+        self.summary_writer_group = summary_writer_group
+        self.summary_writer_subgroup = summary_writer_subgroup
+        if train_log is None:
+            train_log = []
+        self.train_log = train_log
+        if eval_log is None:
+            eval_log = []
+        self.eval_log = eval_log
+
 
     @staticmethod
     def calculate_performance_metrics(
         y_score: torch.tensor, y_pred: torch.tensor, y_true: torch.tensor
-    ) -> StandardClassificationMetrics:
+    ) -> ClassificationScores:
         y_true_one_hot = torch.nn.functional.one_hot(y_true)
         y_score_np = y_score.detach().numpy()
         y_pred_np = y_pred.detach().numpy()
         y_true_np = y_true.detach().numpy()
 
-        return StandardClassificationMetrics(
+        return ClassificationScores(
             accuracy=skm.accuracy_score(y_true=y_true_np, y_pred=y_pred_np),
             roc_auc=skm.roc_auc_score(
                 y_true=y_true_one_hot, y_score=y_score_np
@@ -50,17 +85,18 @@ class StandardModelTrainer:
             f1=skm.f1_score(y_true=y_true_np, y_pred=y_pred_np),
         )
 
+    def reset_epoch_counts(self):
+        self.completed_epochs = 0
+
     def save_checkpoint(
         self,
-        loss_log: list[float],
-        metrics: StandardClassificationMetrics,
     ) -> Path:
         filename = f"{datetime.now()}.tar".replace(" ", "_")
         output_path = self.checkpoint_dir / filename
         output_object = {
-            "epoch_num": self.total_epochs,
-            "loss_log": loss_log,
-            "metrics": metrics,
+            "epoch_num": self.completed_epochs,
+            "train_log": self.train_log,
+            "eval_log": self.eval_log,
             "state_dict": self.model.state_dict(),
             "optimizer_state_dict": self.optimizer.state_dict(),
         }
@@ -74,7 +110,6 @@ class StandardModelTrainer:
         self.model.to(self.train_device)
         self.model.train()
 
-        loss_log = []
         for epoch in range(num_epochs):
             running_loss = 0.0
             for num_batches, (inputs, y) in enumerate(self.train_loader):
@@ -88,15 +123,27 @@ class StandardModelTrainer:
                 loss.backward()
                 self.optimizer.step()
                 running_loss += loss.item()
+            self.completed_epochs += 1
             epoch_loss = running_loss / (num_batches + 1)
-            loss_log.append(epoch_loss)
-            # TODO move reporting work to separate method(s)
-            print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {epoch_loss:.4f}")
-        self.total_epochs += num_epochs
-        return loss_log
+            self.report_epoch_loss(epoch_loss=epoch_loss)
+
+    def report_epoch_loss(self, epoch_loss: float):
+        print(f"Epoch {self.completed_epochs}, Loss: {epoch_loss:.4f}")
+        self.train_log.append(
+            TrainLogEntry(epoch=self.completed_epochs, loss=epoch_loss)
+        )
+        if self.summary_writer is not None:
+            self.summary_writer.add_scalars(
+                f"group_{self.summary_writer_group}/training_loss",
+                {
+                    f"subgroup_{self.summary_writer_subgroup}": epoch_loss,
+                },
+                self.completed_epochs,
+            )
 
     @torch.no_grad()
     def evaluate_model(self):
+        running_loss = 0.0
         self.model.to(self.eval_device)
         self.model.eval()
         all_y_true = torch.LongTensor()
@@ -107,24 +154,63 @@ class StandardModelTrainer:
                 self.eval_device
             )
             y_hat = self.model(inputs)
+            loss = self.loss_fn(y_hat, y)
+            running_loss += loss.item()
             y_pred = torch.argmax(input=y_hat, dim=1)
             all_y_true = torch.cat((all_y_true, y.to("cpu")), dim=0)
             all_y_pred = torch.cat((all_y_pred, y_pred.to("cpu")), dim=0)
             all_y_score = torch.cat((all_y_score, y_hat.to("cpu")), dim=0)
-        metrics = self.calculate_performance_metrics(
+        epoch_loss = running_loss / (num_batches + 1)
+        classification_scores = self.calculate_performance_metrics(
             y_score=all_y_score, y_pred=all_y_pred, y_true=all_y_true
         )
-        print(f"Predictive performance on test data:\n{metrics}\n")
-        return metrics
+        eval_results = EvalResults.from_loss_and_scores(
+            loss=epoch_loss, scores=classification_scores
+        )
+
+        self.report_eval_results(
+            eval_results=eval_results,
+        )
+        return eval_results
+
+    def report_eval_results(
+        self,
+        eval_results: EvalResults,
+    ):
+        print(f"Performance on test data:\n{eval_results}\n")
+        self.eval_log.append(EvalLogEntry(
+            epoch=self.completed_epochs, eval_results=eval_results
+        ))
+        if self.summary_writer is not None:
+            self.summary_writer.add_scalars(
+                f"group_{self.summary_writer_group}/AUC",
+                {
+                    f"subgroup_{self.summary_writer_subgroup}": (
+                        eval_results.roc_auc
+                    )
+                },
+                self.completed_epochs,
+            )
+            self.summary_writer.add_scalars(
+                f"group_{self.summary_writer_group}/validation_loss",
+                {
+                    f"subgroup_{self.summary_writer_subgroup}": (
+                        eval_results.loss
+                    ),
+                },
+                self.completed_epochs,
+            )
 
     def run_train_eval_cycles(
         self,
+        num_cycles: int,
         epochs_per_cycle: int,
-        max_num_cycles: int,
-        save_checkpoints: bool = True,
+        save_checkpoints: bool = False,
     ):
-        for cycle_num in range(max_num_cycles):
-            loss_log = self.train_model(num_epochs=epochs_per_cycle)
+        for cycle_num in range(num_cycles):
+            self.train_model(num_epochs=epochs_per_cycle)
             eval_metrics = self.evaluate_model()
             if save_checkpoints:
-                self.save_checkpoint(loss_log=loss_log, metrics=eval_metrics)
+                self.save_checkpoint(metrics=eval_metrics)
+
+        return TrainEvalLogs(train=self.train_log, eval=self.eval_log)

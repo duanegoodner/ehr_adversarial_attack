@@ -1,4 +1,16 @@
-import numpy as np
+# Cross-validation hyperparaemter trials with ability to prune unpromising
+# trials via Optuna prune. Uses separate trainer & model instance for
+# each fold so intermediate result sent to Optuna prune evaluator contains
+# results partial training results from all folds.
+# Currently not using this approach, but worth keeping for documentation.
+#
+# CV structure
+# for epoch in range(num_global_epochs):
+#     for fold in folds:
+#         run part of folds net epochs
+#     report metric averaged across folds (if bad, Optuna can prune)
+# return final value of metric
+
 import optuna
 import torch
 import torch.nn as nn
@@ -15,7 +27,6 @@ import project_config as pc
 import resource_io as rio
 from lstm_model_stc import BidirectionalX19LSTM
 from standard_model_trainer import StandardModelTrainer
-from torch.utils.tensorboard import SummaryWriter
 from weighted_dataloader_builder import (
     DataLoaderBuilder,
     WeightedDataLoaderBuilder,
@@ -188,56 +199,9 @@ class HyperParameterTuner:
             nn.Softmax(dim=1),
         )
 
-    @staticmethod
-    def initialize_model(model: nn.Module):
-        for name, param in model.named_parameters():
-            if "weight" in name:
-                nn.init.xavier_normal_(param)
-            elif "bias" in name:
-                nn.init.constant_(param, 0.0)
-
-    def create_trainer(
-        self,
-        train_eval_pair: TrainEvalDatasetPair,
-        settings: X19LSTMHyperParameterSettings,
-        model: nn.Module,
-        summary_writer: SummaryWriter,
-        fold_num: int,
-    ):
-        train_loader = self.train_loader_builder.build(
-            dataset=train_eval_pair.train,
-            batch_size=2**settings.log_batch_size,
-            collate_fn=self.collate_fn,
-        )
-        validation_loader = DataLoader(
-            dataset=train_eval_pair.validation,
-            batch_size=128,
-            shuffle=False,
-            collate_fn=self.collate_fn,
-        )
-
-        return StandardModelTrainer(
-            train_device=self.device,
-            eval_device=self.device,
-            model=model,
-            loss_fn=self.loss_fn,
-            optimizer=getattr(torch.optim, settings.optimizer_name)(
-                model.parameters(), lr=settings.learning_rate
-            ),
-            train_loader=train_loader,
-            test_loader=validation_loader,
-            summary_writer=summary_writer,
-            summary_writer_label=f"fold_{fold_num}",
-        )
-
-    def create_trainers(
-        self,
-        settings: X19LSTMHyperParameterSettings,
-        summary_writer: SummaryWriter,
-        trial_number: int,
-    ):
+    def create_trainers(self, settings: X19LSTMHyperParameterSettings):
         trainers = []
-        for fold_idx, dataset_pair in enumerate(self.cv_datasets):
+        for dataset_pair in self.cv_datasets:
             model = self.define_model(settings=settings)
             train_loader = self.train_loader_builder.build(
                 dataset=dataset_pair.train,
@@ -261,10 +225,6 @@ class HyperParameterTuner:
                 ),
                 train_loader=train_loader,
                 test_loader=validation_loader,
-                summary_writer=summary_writer,
-                summary_writer_group=str(trial_number),
-                summary_writer_subgroup=str(fold_idx),
-                checkpoint_dir=self.output_dir / "checkpoints",
             )
 
             trainers.append(trainer)
@@ -275,43 +235,37 @@ class HyperParameterTuner:
         settings = X19LSTMHyperParameterSettings.from_optuna(
             trial=trial, tuning_ranges=self.tuning_ranges
         )
-
-        summary_writer_path = (
-            self.output_dir / "tensorboard" / f"Trial_{trial.number}"
-        )
-        summary_writer = SummaryWriter(str(summary_writer_path))
-
-        trainers = self.create_trainers(
-            settings=settings,
-            summary_writer=summary_writer,
-            trial_number=trial.number,
+        trainers = self.create_trainers(settings)
+        all_folds_metric_of_interest = torch.zeros(
+            self.num_folds, dtype=torch.float32
         )
 
-        all_epoch_eval_results = []
-        all_epoch_metric_of_interest = []
+        # We want each trial to have same sample selection pattern
+        torch.manual_seed(self.weighted_dataloader_random_seed)
 
-        # TODO: think more abot this seed. Is it needed???
-        # Do we want each trial to have same sample selection pattern?
-        # torch.manual_seed(self.weighted_dataloader_random_seed)
-
-        for cv_epoch in range(self.num_cv_epochs):
-            epoch_results = []
-            all_folds_metric_of_interest = []
-            for fold_idx, trainer in enumerate(trainers):
+        for cv_epoch_idx in range(self.num_cv_epochs):
+            for trainer_idx, trainer in enumerate(trainers):
                 trainer.train_model(num_epochs=self.epochs_per_fold)
-                eval_results = trainer.evaluate_model()
-                epoch_results.append(eval_results)
-                all_folds_metric_of_interest.append(
-                    getattr(eval_results, self.performance_metric)
-                )
+                metrics = trainer.evaluate_model()
+                metric_of_interest = getattr(metrics, self.performance_metric)
+
+                # Only update metric val if best so far for fold.
+                # Will prevent using results if overfitting.
+                if metric_of_interest > all_folds_metric_of_interest[trainer_idx]:
+                    all_folds_metric_of_interest[trainer_idx] = metric_of_interest
                 trainer.model.to("cpu")
-            all_epoch_eval_results.append(epoch_results)
-            all_epoch_metric_of_interest.append(
-                np.mean(all_folds_metric_of_interest)
+
+            trial.report(
+                torch.mean(all_folds_metric_of_interest).item(),
+                cv_epoch_idx,
             )
 
-        return min(all_epoch_metric_of_interest)
+            if trial.should_prune():
+                raise optuna.exceptions.TrialPruned()
 
+        return (
+            torch.mean(all_folds_metric_of_interest).item()
+        )
 
     def tune(self, timeout: int | None = None) -> optuna.Study:
         study = optuna.create_study(
@@ -324,7 +278,6 @@ class HyperParameterTuner:
         pruned_trials = study.get_trials(
             deepcopy=False, states=[TrialState.PRUNED]
         )
-        
         complete_trials = study.get_trials(
             deepcopy=False, states=[TrialState.COMPLETE]
         )

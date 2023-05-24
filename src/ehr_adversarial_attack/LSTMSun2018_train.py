@@ -3,6 +3,8 @@ import torch.nn as nn
 from pathlib import Path
 from torch.utils.data import DataLoader
 from torch.utils.data.dataset import random_split
+from torch.utils.tensorboard import SummaryWriter
+import project_config as pc
 from lstm_model_stc import (
     BidirectionalX19LSTM,
 )
@@ -65,8 +67,11 @@ def main():
         collate_fn=x19m_collate_fn,
     )
 
+    summary_writer = SummaryWriter(log_dir=pc.DATA_DIR / "tensorboard_data")
+
     trainer = StandardModelTrainer(
-        device=cur_device,
+        train_device=cur_device,
+        eval_device=cur_device,
         model=model_concise,
         train_loader=train_dataloader,
         test_loader=test_dataloader,
@@ -76,10 +81,13 @@ def main():
         / "data"
         / "training_results"
         / "LSTM_Sun2018_x19m_6_48_b",
+        summary_writer=summary_writer,
+        summary_writer_group="A",
+        summary_writer_subgroup="2",
     )
 
     trainer.run_train_eval_cycles(
-        epochs_per_cycle=20, max_num_cycles=20, save_checkpoints=True
+        num_cycles=5, epochs_per_cycle=1, save_checkpoints=False
     )
 
 
