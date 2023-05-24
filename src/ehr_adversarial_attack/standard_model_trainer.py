@@ -2,28 +2,16 @@ import sklearn.metrics as skm
 import torch.nn as nn
 import torch.optim
 import torch.utils.data as ud
-from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from torch.utils.tensorboard import SummaryWriter
-from typing import NamedTuple
-from data_structures import EvalResults, ClassificationScores
-
-
-class TrainLogEntry(NamedTuple):
-    epoch: int
-    loss: float
-
-
-class EvalLogEntry(NamedTuple):
-    epoch: int
-    eval_results: EvalResults
-
-
-@dataclass
-class TrainEvalLogs:
-    train: list[TrainLogEntry]
-    eval: list[EvalLogEntry]
+from data_structures import (
+    EvalResults,
+    ClassificationScores,
+    TrainLogEntry,
+    EvalLogEntry,
+    TrainEvalLogs,
+)
 
 
 class StandardModelTrainer:
@@ -64,7 +52,6 @@ class StandardModelTrainer:
         if eval_log is None:
             eval_log = []
         self.eval_log = eval_log
-
 
     @staticmethod
     def calculate_performance_metrics(
@@ -178,9 +165,11 @@ class StandardModelTrainer:
         eval_results: EvalResults,
     ):
         print(f"Performance on test data:\n{eval_results}\n")
-        self.eval_log.append(EvalLogEntry(
-            epoch=self.completed_epochs, eval_results=eval_results
-        ))
+        self.eval_log.append(
+            EvalLogEntry(
+                epoch=self.completed_epochs, eval_results=eval_results
+            )
+        )
         if self.summary_writer is not None:
             self.summary_writer.add_scalars(
                 f"group_{self.summary_writer_group}/AUC",
@@ -211,6 +200,6 @@ class StandardModelTrainer:
             self.train_model(num_epochs=epochs_per_cycle)
             eval_metrics = self.evaluate_model()
             if save_checkpoints:
-                self.save_checkpoint(metrics=eval_metrics)
+                self.save_checkpoint()
 
         return TrainEvalLogs(train=self.train_log, eval=self.eval_log)

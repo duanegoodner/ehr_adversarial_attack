@@ -13,6 +13,7 @@ from torch.utils.data import DataLoader, Dataset, Subset
 from typing import Callable
 import project_config as pc
 import resource_io as rio
+from data_structures import CVTrialSummary, TrainEvalLogs
 from lstm_model_stc import BidirectionalX19LSTM
 from standard_model_trainer import StandardModelTrainer
 from torch.utils.tensorboard import SummaryWriter
@@ -109,6 +110,7 @@ class HyperParameterTuner:
         sampler: optuna.samplers.BaseSampler = TPESampler(),
         pruner: optuna.pruners.BasePruner = MedianPruner(),
         output_dir: Path = None,
+        save_trial_info: bool = False
     ):
         self.device = device
         self.dataset = dataset
@@ -136,6 +138,7 @@ class HyperParameterTuner:
         self.pruner = pruner
         self.output_dir = self.initialize_output_dir(output_dir=output_dir)
         self.exporter = rio.ResourceExporter()
+        self.save_trial_info = save_trial_info
 
     @staticmethod
     def initialize_output_dir(output_dir: Path = None) -> Path:
@@ -271,6 +274,20 @@ class HyperParameterTuner:
 
         return trainers
 
+    def export_trial_info(self, trial, trainers: list[StandardModelTrainer]):
+        trial_summary = CVTrialSummary(
+            trial=trial,
+            logs=[
+                TrainEvalLogs(train=trainer.train_log, eval=trainer.eval_log)
+                for trainer in trainers
+            ],
+        )
+
+        self.exporter.export(
+            resource=trial_summary,
+            path=self.output_dir / f"trial_{trial.number}_summary.pickle",
+        )
+
     def objective_fn(self, trial) -> float | None:
         settings = X19LSTMHyperParameterSettings.from_optuna(
             trial=trial, tuning_ranges=self.tuning_ranges
@@ -310,8 +327,10 @@ class HyperParameterTuner:
                 np.mean(all_folds_metric_of_interest)
             )
 
-        return min(all_epoch_metric_of_interest)
+        if self.save_trial_info:
+            self.export_trial_info(trial=trial, trainers=trainers)
 
+        return min(all_epoch_metric_of_interest)
 
     def tune(self, timeout: int | None = None) -> optuna.Study:
         study = optuna.create_study(
@@ -324,7 +343,7 @@ class HyperParameterTuner:
         pruned_trials = study.get_trials(
             deepcopy=False, states=[TrialState.PRUNED]
         )
-        
+
         complete_trials = study.get_trials(
             deepcopy=False, states=[TrialState.COMPLETE]
         )

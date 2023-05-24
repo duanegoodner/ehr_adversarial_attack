@@ -31,7 +31,7 @@ def main():
         dataset=X19MGeneralDataset.from_feaure_finalizer_output(),
         collate_fn=x19m_collate_fn,
         num_folds=5,
-        num_cv_epochs=2,
+        num_cv_epochs=10,
         num_trials=20,
         epochs_per_fold=5,
         tuning_ranges=my_tuning_ranges,
