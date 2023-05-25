@@ -82,8 +82,8 @@ def main():
         / "training_results"
         / "LSTM_Sun2018_x19m_6_48_b",
         summary_writer=summary_writer,
-        summary_writer_group="A",
-        summary_writer_subgroup="2",
+        summary_writer_group="Trial_A",
+        summary_writer_subgroup="Group_1",
     )
 
     trainer.run_train_eval_cycles(

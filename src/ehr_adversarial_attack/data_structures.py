@@ -1,7 +1,7 @@
+import numpy as np
 import optuna
 import torch
-import torch.nn as nn
-from typing import NamedTuple
+from abc import ABC
 from dataclasses import dataclass
 
 
@@ -30,8 +30,17 @@ class ClassificationScores:
 
 
 @dataclass
-class EvalResults:
+class TrainEpochResult:
     loss: float
+
+    @classmethod
+    def mean(cls, results: list["TrainEpochResult"]) -> "TrainEpochResult":
+        return cls(loss=np.mean([item.loss for item in results]))
+
+
+@dataclass
+class EvalEpochResult:
+    validation_loss: float
     accuracy: float
     AUC: float
     precision: float
@@ -39,9 +48,11 @@ class EvalResults:
     f1: float
 
     @classmethod
-    def from_loss_and_scores(cls, loss: float, scores: ClassificationScores):
+    def from_loss_and_scores(
+        cls, validation_loss: float, scores: ClassificationScores
+    ):
         return cls(
-            loss=loss,
+            validation_loss=validation_loss,
             accuracy=scores.accuracy,
             AUC=scores.AUC,
             precision=scores.precision,
@@ -49,9 +60,20 @@ class EvalResults:
             f1=scores.f1,
         )
 
+    @classmethod
+    def mean(cls, results: list["EvalEpochResult"]) -> "EvalEpochResult":
+        return cls(
+            validation_loss=np.mean([item.validation_loss for item in results]),
+            accuracy=np.mean([item.accuracy for item in results]),
+            AUC=np.mean([item.AUC for item in results]),
+            precision=np.mean([item.precision for item in results]),
+            recall=np.mean([item.recall for item in results]),
+            f1=np.mean([item.f1 for item in results]),
+        )
+
     def __str__(self) -> str:
         return (
-            f"Loss:\t\t{self.loss:.4f}\n"
+            f"Loss:\t\t{self.validation_loss:.4f}\n"
             f"Accuracy:\t{self.accuracy:.4f}\n"
             f"AUC:\t\t{self.AUC:.4f}\n"
             f"Precision:\t{self.precision:.4f}\n"
@@ -60,23 +82,61 @@ class EvalResults:
         )
 
 
-class TrainLogEntry(NamedTuple):
+@dataclass
+class TrainLogEntry:
     epoch: int
-    loss: float
-
-
-class EvalLogEntry(NamedTuple):
-    epoch: int
-    eval_results: EvalResults
+    result: TrainEpochResult
 
 
 @dataclass
-class TrainEvalLogs:
-    train: list[TrainLogEntry]
-    eval: list[EvalLogEntry]
+class EvalLogEntry:
+    epoch: int
+    result: EvalEpochResult
+
+
+@dataclass
+class TrainEvalLog(ABC):
+    data: list[TrainLogEntry] | list[EvalLogEntry] = None
+
+    def __post_init__(self):
+        if self.data is None:
+            self.data = []
+
+    def update(self, entry: TrainLogEntry | EvalLogEntry):
+        self.data.append(entry)
+
+    @property
+    def latest_entry(self) -> TrainLogEntry | EvalLogEntry | None:
+        if len(self.data) == 0:
+            return None
+        else:
+            return self.data[-1]
+
+    def get_all_entries_of_attribute(self, attr: str) -> list[float]:
+        return [getattr(entry, name=attr) for entry in self.data]
+
+    def data_attribute_mean(self, attr: str) -> float:
+        return np.mean(self.get_all_entries_of_attribute(attr=attr))
+
+
+@dataclass
+class TrainLog(TrainEvalLog):
+    data: list[TrainLogEntry] = None
+
+
+@dataclass
+class EvalLog(TrainEvalLog):
+    data: list[EvalLogEntry] = None
+
+
+@dataclass
+class TrainEvalLogPair:
+    train: TrainLog
+    eval: EvalLog
 
 
 @dataclass
 class CVTrialSummary:
     trial: optuna.Trial
-    logs: list[TrainEvalLogs]
+    cv_means_log: EvalLog
+    trainer_logs: list[TrainEvalLogPair]

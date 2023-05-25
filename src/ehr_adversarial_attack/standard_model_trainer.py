@@ -6,11 +6,15 @@ from datetime import datetime
 from pathlib import Path
 from torch.utils.tensorboard import SummaryWriter
 from data_structures import (
-    EvalResults,
+    EvalEpochResult,
     ClassificationScores,
+    TrainEpochResult,
     TrainLogEntry,
+    TrainLog,
+    EvalEpochResult,
     EvalLogEntry,
-    TrainEvalLogs,
+    EvalLog,
+    TrainEvalLogPair,
 )
 
 
@@ -26,8 +30,8 @@ class StandardModelTrainer:
         test_loader: ud.DataLoader,
         checkpoint_dir: Path = None,
         epoch_start_count: int = 0,
-        train_log: list[TrainLogEntry] = None,
-        eval_log: list[EvalLogEntry] = None,
+        train_log: TrainLog = TrainLog(),
+        eval_log: EvalLog = EvalLog(),
         summary_writer: SummaryWriter = None,
         summary_writer_group: str = "",
         summary_writer_subgroup: str = "",
@@ -64,9 +68,7 @@ class StandardModelTrainer:
 
         return ClassificationScores(
             accuracy=skm.accuracy_score(y_true=y_true_np, y_pred=y_pred_np),
-            AUC=skm.roc_auc_score(
-                y_true=y_true_one_hot, y_score=y_score_np
-            ),
+            AUC=skm.roc_auc_score(y_true=y_true_one_hot, y_score=y_score_np),
             precision=skm.precision_score(y_true=y_true_np, y_pred=y_pred_np),
             recall=skm.recall_score(y_true=y_true_np, y_pred=y_pred_np),
             f1=skm.f1_score(y_true=y_true_np, y_pred=y_pred_np),
@@ -111,18 +113,23 @@ class StandardModelTrainer:
                 self.optimizer.step()
                 running_loss += loss.item()
             epoch_loss = running_loss / (num_batches + 1)
-            if self.completed_epochs > 0:
-                self.report_epoch_loss(epoch_loss=epoch_loss)
+
+            self.train_log.update(
+                entry=TrainLogEntry(
+                    epoch=self.completed_epochs,
+                    result=TrainEpochResult(loss=epoch_loss),
+                )
+            )
             self.completed_epochs += 1
+            self.report_epoch_loss(epoch_loss=epoch_loss)
+        return self.train_log
 
     def report_epoch_loss(self, epoch_loss: float):
         print(
             f"{self.summary_writer_subgroup}, epoch_{self.completed_epochs},"
             f" Loss: {epoch_loss:.4f}"
         )
-        self.train_log.append(
-            TrainLogEntry(epoch=self.completed_epochs, loss=epoch_loss)
-        )
+
         if self.summary_writer is not None:
             self.summary_writer.add_scalars(
                 f"{self.summary_writer_group}/training_loss",
@@ -155,25 +162,27 @@ class StandardModelTrainer:
         classification_scores = self.calculate_performance_metrics(
             y_score=all_y_score, y_pred=all_y_pred, y_true=all_y_true
         )
-        eval_results = EvalResults.from_loss_and_scores(
-            loss=epoch_loss, scores=classification_scores
+        eval_results = EvalEpochResult(
+            validation_loss=epoch_loss, **classification_scores.__dict__
         )
 
+        self.eval_log.update(
+            EvalLogEntry(epoch=self.completed_epochs, result=eval_results)
+        )
         self.report_eval_results(
             eval_results=eval_results,
         )
-        return eval_results
+        return self.eval_log
 
     def report_eval_results(
         self,
-        eval_results: EvalResults,
+        eval_results: EvalEpochResult,
     ):
-        print(f"\n{self.summary_writer_subgroup} performance on test data:\n{eval_results}\n")
-        self.eval_log.append(
-            EvalLogEntry(
-                epoch=self.completed_epochs, eval_results=eval_results
-            )
+        print(
+            f"\n{self.summary_writer_subgroup} performance on test"
+            f" data:\n{eval_results}\n"
         )
+
         if self.summary_writer is not None:
             self.summary_writer.add_scalars(
                 f"{self.summary_writer_group}/AUC",
@@ -183,7 +192,9 @@ class StandardModelTrainer:
             self.summary_writer.add_scalars(
                 f"{self.summary_writer_group}/validation_loss",
                 {
-                    f"{self.summary_writer_subgroup}": eval_results.loss,
+                    f"{self.summary_writer_subgroup}": (
+                        eval_results.validation_loss
+                    ),
                 },
                 self.completed_epochs,
             )
@@ -196,8 +207,8 @@ class StandardModelTrainer:
     ):
         for cycle_num in range(num_cycles):
             self.train_model(num_epochs=epochs_per_cycle)
-            eval_metrics = self.evaluate_model()
+            self.evaluate_model()
             if save_checkpoints:
                 self.save_checkpoint()
 
-        return TrainEvalLogs(train=self.train_log, eval=self.eval_log)
+        return TrainEvalLogPair(train=self.train_log, eval=self.eval_log)
