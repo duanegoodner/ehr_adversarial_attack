@@ -137,8 +137,8 @@ class TrainEvalLogPair:
 
 
 @dataclass
-class CVTrialSummary:
-    trial: optuna.Trial
+class CVTrialLogs:
+    # trial: optuna.Trial
     cv_means_log: EvalLog
     trainer_logs: list[TrainEvalLogPair]
 

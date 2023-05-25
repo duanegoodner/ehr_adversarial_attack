@@ -29,14 +29,14 @@ def main():
         device=cur_device,
         dataset=X19MGeneralDataset.from_feaure_finalizer_output(),
         collate_fn=x19m_collate_fn,
-        num_folds=5,
-        num_cv_epochs=30,
-        num_trials=30,
-        epochs_per_fold=5,
+        num_folds=2,
+        num_cv_epochs=10,
+        # num_trials=30,
+        epochs_per_fold=1,
         tuning_ranges=my_tuning_ranges,
     )
 
-    completed_study = tuner.tune()
+    completed_study = tuner.tune(num_trials=20)
 
     return tuner, completed_study
 

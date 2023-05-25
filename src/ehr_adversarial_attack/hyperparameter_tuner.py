@@ -4,6 +4,7 @@ import torch.nn as nn
 from dataclasses import dataclass
 from datetime import datetime
 from early_stopping import EarlyStopper, PerformanceSelector
+from optuna.pruners import BasePruner, MedianPruner
 from optuna.samplers import BaseSampler, TPESampler
 from optuna.trial import TrialState
 from pathlib import Path
@@ -13,7 +14,7 @@ from typing import Callable
 import project_config as pc
 import resource_io as rio
 from data_structures import (
-    CVTrialSummary,
+    CVTrialLogs,
     EvalEpochResult,
     EvalLogEntry,
     EvalLog,
@@ -101,7 +102,6 @@ class HyperParameterTuner:
         device: torch.device,
         dataset: Dataset,
         collate_fn: Callable,
-        num_trials: int,
         num_folds: int,
         num_cv_epochs: int,
         epochs_per_fold: int,
@@ -114,6 +114,9 @@ class HyperParameterTuner:
         performance_metric: str = "validation_loss",
         optimization_direction: OptimizeDirection = OptimizeDirection.MIN,
         performance_metric_selector: Callable = min,
+        pruner: BasePruner = MedianPruner(
+            n_startup_trials=2, n_warmup_steps=5
+        ),
         early_stopper_patience: int = 1,
         early_stopped_trials: dict[int, int] = None,
         hyperparameter_sampler: BaseSampler = TPESampler(),
@@ -124,7 +127,6 @@ class HyperParameterTuner:
         self.device = device
         self.dataset = dataset
         self.collate_fn = collate_fn
-        self.num_trials = num_trials
         self.num_folds = num_folds
         self.num_cv_epochs = num_cv_epochs
         self.epochs_per_fold = epochs_per_fold
@@ -137,6 +139,12 @@ class HyperParameterTuner:
         self.performance_metric = performance_metric
         self.performance_metric_selector = performance_metric_selector
         self.optimization_direction = optimization_direction
+        self.optimization_direction_label = (
+            "minimize"
+            if optimization_direction == OptimizeDirection.MIN
+            else "maximize"
+        )
+        self.pruner = pruner
         self.early_stopper_patience = early_stopper_patience
         if early_stopped_trials is None:
             early_stopped_trials = {}
@@ -266,8 +274,8 @@ class HyperParameterTuner:
         if not self.tuner_checkpoint_dir.exists():
             self.tuner_checkpoint_dir.mkdir()
 
-        trial_summary = CVTrialSummary(
-            trial=trial,
+        trial_summary = CVTrialLogs(
+            # trial=trial,
             trainer_logs=[
                 TrainEvalLogPair(
                     train=trainer.train_log, eval=trainer.eval_log
@@ -280,7 +288,7 @@ class HyperParameterTuner:
         self.exporter.export(
             resource=trial_summary,
             path=self.tuner_checkpoint_dir
-            / f"{self.trial_prefix}{trial.number}.pickle",
+            / f"{self.trial_prefix}{trial.number}_logs.pickle",
         )
 
     def report_cv_means(
@@ -316,7 +324,7 @@ class HyperParameterTuner:
             early_stopper=EarlyStopper(
                 performance_metric=self.performance_metric,
                 patience=self.early_stopper_patience,
-                optimize_direction=self.optimization_direction
+                optimize_direction=self.optimization_direction,
             ),
         )
 
@@ -343,20 +351,29 @@ class HyperParameterTuner:
 
             objective_tools.cv_means_log.update(entry=cv_means_log_entry)
 
+            # trial.report is NOT part of this function
             self.report_cv_means(
                 log_entry=cv_means_log_entry,
                 summary_writer=objective_tools.summary_writer,
                 trial=trial,
             )
 
-            if objective_tools.early_stopper.indicates_early_stop(
-                result=mean_validation_vals
-            ):
-                self.early_stopped_trials[trial.number] = (
-                    cv_epoch + 1
-                ) * self.epochs_per_fold
-                print(f"Trial {trial.number} stopped early.")
-                break
+            trial.report(
+                getattr(mean_validation_vals, self.performance_metric),
+                cv_epoch,
+            )
+
+            if trial.should_prune():
+                raise optuna.exceptions.TrialPruned()
+
+            # if objective_tools.early_stopper.indicates_early_stop(
+            #     result=mean_validation_vals
+            # ):
+            #     self.early_stopped_trials[trial.number] = (
+            #         cv_epoch + 1
+            #     ) * self.epochs_per_fold
+            #     print(f"Trial {trial.number} stopped early.")
+            #     break
 
         if self.save_trial_info:
             self.export_trial_info(
@@ -374,27 +391,12 @@ class HyperParameterTuner:
             ]
         )
 
-        # return self.performance_metric_selector(
-        #     [
-        #         getattr(item.result, self.performance_metric)
-        #         for item in objective_tools.cv_means_log.data
-        #     ]
-        # )
-
     def export_study(self, study: optuna.Study):
         if not self.tuner_checkpoint_dir.exists():
             self.tuner_checkpoint_dir.mkdir()
-        timestamp = str(datetime.now()).replace(" ", "_")
-        study_filename = f"optuna_study_{timestamp}.pickle"
+        study_filename = f"optuna_study.pickle"
         study_export_path = self.tuner_checkpoint_dir / study_filename
         self.exporter.export(resource=study, path=study_export_path)
-        hyperparameter_tuner_filename = (
-            f"hyperparameter_tuner_{timestamp}.pickle"
-        )
-        hyperparameter_tuner_path = (
-            self.tuner_checkpoint_dir / hyperparameter_tuner_filename
-        )
-        self.exporter.export(resource=self, path=hyperparameter_tuner_path)
 
     @staticmethod
     def report_study_results(study: optuna.Study):
@@ -416,13 +418,16 @@ class HyperParameterTuner:
         for key, value in study.best_trial.params.items():
             print("    {}: {}".format(key, value))
 
-    def tune(self, timeout: int | None = None) -> optuna.Study:
+    def tune(
+        self, num_trials: int, timeout: int | None = None
+    ) -> optuna.Study:
         study = optuna.create_study(
-            direction="maximize", sampler=self.hyperparameter_sampler
+            direction=self.optimization_direction_label,
+            sampler=self.hyperparameter_sampler,
+            pruner=self.pruner
         )
-        study.optimize(
-            func=self.objective_fn, n_trials=self.num_trials, timeout=timeout
-        )
-        self.export_study(study=study)
+        for trial_num in range(num_trials):
+            study.optimize(func=self.objective_fn, n_trials=1, timeout=timeout)
+            self.export_study(study=study)
 
         return study
