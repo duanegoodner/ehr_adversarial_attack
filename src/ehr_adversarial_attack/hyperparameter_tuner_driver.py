@@ -1,6 +1,5 @@
 import time
 import torch
-import resource_io as rio
 from x19_mort_general_dataset import x19m_collate_fn, X19MGeneralDataset
 from hyperparameter_tuner import (
     HyperParameterTuner,

@@ -3,8 +3,7 @@ import torch
 import torch.nn as nn
 from dataclasses import dataclass
 from datetime import datetime
-from optuna.pruners import MedianPruner
-from optuna.samplers import TPESampler
+from optuna.samplers import BaseSampler, TPESampler
 from optuna.trial import TrialState
 from pathlib import Path
 from sklearn.model_selection import StratifiedKFold
@@ -106,14 +105,12 @@ class HyperParameterTuner:
         tuning_ranges: dataclass,
         fold_class: Callable = StratifiedKFold,
         train_loader_builder=WeightedDataLoaderBuilder(),
-        fold_generator_builder_random_seed: int = 1234,
-        weighted_dataloader_random_seed: int = 22,
+        kfold_random_seed: int = 1234,
         loss_fn: nn.Module = nn.CrossEntropyLoss(),
-        validation_means_logs: dict[int, EvalLog] = None,
         cv_mean_metrics_of_interest: tuple[str] = ("AUC", "validation_loss"),
-        performance_metric: str = "AUC",
-        sampler: optuna.samplers.BaseSampler = TPESampler(),
-        pruner: optuna.pruners.BasePruner = MedianPruner(),
+        performance_metric: str = "validation_loss",
+        performance_metric_selector: Callable = min,
+        hyperparameter_sampler: BaseSampler = TPESampler(),
         output_dir: Path = None,
         save_trial_info: bool = False,
         trial_prefix: str = "trial_",
@@ -126,23 +123,16 @@ class HyperParameterTuner:
         self.num_cv_epochs = num_cv_epochs
         self.epochs_per_fold = epochs_per_fold
         self.fold_class = fold_class
-        self.fold_generator_builder_random_seed = (
-            fold_generator_builder_random_seed
-        )
-        self.fold_generator_builder = fold_class(
-            n_splits=num_folds,
-            shuffle=True,
-            random_state=fold_generator_builder_random_seed,
-        )
+        # use seed to keep same fold indices for all trials
+        self.kfold_random_seed = kfold_random_seed
         self.cv_datasets = self.create_datasets()
         self.train_loader_builder = train_loader_builder
         self.loss_fn = loss_fn
         self.performance_metric = performance_metric
+        self.performance_metric_selector = performance_metric_selector
         self.cv_mean_metrics_of_interest = cv_mean_metrics_of_interest
         self.tuning_ranges = tuning_ranges
-        self.weighted_dataloader_random_seed = weighted_dataloader_random_seed
-        self.sampler = sampler
-        self.pruner = pruner
+        self.hyperparameter_sampler = hyperparameter_sampler
         self.output_dir = self.initialize_output_dir(output_dir=output_dir)
         self.tensorboard_output_dir = self.output_dir / "tensorboard"
         self.trainer_checkpoint_dir = self.output_dir / "checkpoints_trainer"
@@ -150,9 +140,6 @@ class HyperParameterTuner:
         self.exporter = rio.ResourceExporter()
         self.save_trial_info = save_trial_info
         self.trial_prefix = trial_prefix
-        if validation_means_logs is None:
-            validation_means_logs = {}
-        self.validation_means_logs = validation_means_logs
 
     @staticmethod
     def initialize_output_dir(output_dir: Path = None) -> Path:
@@ -164,7 +151,12 @@ class HyperParameterTuner:
         return output_dir
 
     def create_datasets(self) -> list[TrainEvalDatasetPair]:
-        fold_generator = self.fold_generator_builder.split(
+        fold_generator_builder = self.fold_class(
+            n_splits=self.num_folds,
+            shuffle=True,
+            random_state=self.kfold_random_seed,
+        )
+        fold_generator = fold_generator_builder.split(
             self.dataset[:][0], self.dataset[:][1]
         )
 
@@ -247,7 +239,7 @@ class HyperParameterTuner:
                 summary_writer=summary_writer,
                 summary_writer_group=f"{self.trial_prefix}{trial_number}",
                 summary_writer_subgroup=f"fold_{fold_idx}",
-                checkpoint_dir=self.output_dir / "checkpoints",
+                checkpoint_dir=self.trainer_checkpoint_dir,
             )
 
             trainers.append(trainer)
@@ -260,6 +252,9 @@ class HyperParameterTuner:
         trainers: list[StandardModelTrainer],
         cv_means_log: EvalLog,
     ):
+        if not self.tuner_checkpoint_dir.exists():
+            self.tuner_checkpoint_dir.mkdir()
+
         trial_summary = CVTrialSummary(
             trial=trial,
             trainer_logs=[
@@ -310,9 +305,10 @@ class HyperParameterTuner:
         )
 
     def objective_fn(self, trial) -> float | None:
-
         objective_tools = self.build_objective_function_tools(trial=trial)
 
+        # TODO consider setting seed here so WeightedRandomSampler makes same
+        #  selections across all trials
         for cv_epoch in range(self.num_cv_epochs):
             eval_epoch_results = []
             for fold_idx, trainer in enumerate(objective_tools.trainers):
@@ -344,25 +340,33 @@ class HyperParameterTuner:
                 cv_means_log=objective_tools.cv_means_log,
             )
 
-        return min(
+        return self.performance_metric_selector(
             [
-                item.result.validation_loss
+                getattr(item.result, self.performance_metric)
                 for item in objective_tools.cv_means_log.data
             ]
         )
 
-    def tune(self, timeout: int | None = None) -> optuna.Study:
-        study = optuna.create_study(
-            direction="maximize", sampler=self.sampler, pruner=self.pruner
+    def export_study(self, study: optuna.Study):
+        if not self.tuner_checkpoint_dir.exists():
+            self.tuner_checkpoint_dir.mkdir()
+        timestamp = str(datetime.now()).replace(" ", "_")
+        study_filename = f"optuna_study_{timestamp}.pickle"
+        study_export_path = self.tuner_checkpoint_dir / study_filename
+        self.exporter.export(resource=study, path=study_export_path)
+        hyperparameter_tuner_filename = (
+            f"hyperparameter_tuner_{timestamp}.pickle"
         )
-        study.optimize(
-            func=self.objective_fn, n_trials=self.num_trials, timeout=timeout
+        hyperparameter_tuner_path = (
+            self.tuner_checkpoint_dir / hyperparameter_tuner_filename
         )
+        self.exporter.export(resource=self, path=hyperparameter_tuner_path)
 
+    @staticmethod
+    def report_study_results(study: optuna.Study):
         pruned_trials = study.get_trials(
             deepcopy=False, states=[TrialState.PRUNED]
         )
-
         complete_trials = study.get_trials(
             deepcopy=False, states=[TrialState.COMPLETE]
         )
@@ -371,25 +375,20 @@ class HyperParameterTuner:
         print("  Number of finished trials: ", len(study.trials))
         print("  Number of pruned trials: ", len(pruned_trials))
         print("  Number of complete trials: ", len(complete_trials))
+
         print("Best trial:")
-        trial = study.best_trial
-
-        print("  Value: ", trial.value)
-
+        print("  Value: ", study.best_trial.value)
         print("  Params: ")
-        for key, value in trial.params.items():
+        for key, value in study.best_trial.params.items():
             print("    {}: {}".format(key, value))
 
-        timestamp = str(datetime.now()).replace(" ", "_")
-        study_filename = f"optuna_study_{timestamp}.pickle"
-        study_export_path = self.output_dir / study_filename
-        self.exporter.export(resource=study, path=study_export_path)
-        hyperparameter_tuner_filename = (
-            f"hyperparameter_tuner_{timestamp}.pickle"
+    def tune(self, timeout: int | None = None) -> optuna.Study:
+        study = optuna.create_study(
+            direction="maximize", sampler=self.hyperparameter_sampler
         )
-        hyperparameter_tuner_path = (
-            self.output_dir / hyperparameter_tuner_filename
+        study.optimize(
+            func=self.objective_fn, n_trials=self.num_trials, timeout=timeout
         )
-        self.exporter.export(resource=self, path=hyperparameter_tuner_path)
+        self.export_study(study=study)
 
         return study
