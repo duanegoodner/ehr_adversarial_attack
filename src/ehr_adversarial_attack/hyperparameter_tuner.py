@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 from dataclasses import dataclass
 from datetime import datetime
+from early_stopping import EarlyStopper, PerformanceSelector
 from optuna.samplers import BaseSampler, TPESampler
 from optuna.trial import TrialState
 from pathlib import Path
@@ -16,6 +17,7 @@ from data_structures import (
     EvalEpochResult,
     EvalLogEntry,
     EvalLog,
+    OptimizeDirection,
     TrainEvalLogPair,
 )
 from lstm_model_stc import BidirectionalX19LSTM
@@ -90,6 +92,7 @@ class ObjectiveFunctionTools:
     summary_writer: SummaryWriter
     cv_means_log: EvalLog
     trainers: list[StandardModelTrainer]
+    early_stopper: EarlyStopper
 
 
 class HyperParameterTuner:
@@ -109,10 +112,13 @@ class HyperParameterTuner:
         loss_fn: nn.Module = nn.CrossEntropyLoss(),
         cv_mean_metrics_of_interest: tuple[str] = ("AUC", "validation_loss"),
         performance_metric: str = "validation_loss",
+        optimization_direction: OptimizeDirection = OptimizeDirection.MIN,
         performance_metric_selector: Callable = min,
+        early_stopper_patience: int = 1,
+        early_stopped_trials: dict[int, int] = None,
         hyperparameter_sampler: BaseSampler = TPESampler(),
         output_dir: Path = None,
-        save_trial_info: bool = False,
+        save_trial_info: bool = True,
         trial_prefix: str = "trial_",
     ):
         self.device = device
@@ -130,6 +136,11 @@ class HyperParameterTuner:
         self.loss_fn = loss_fn
         self.performance_metric = performance_metric
         self.performance_metric_selector = performance_metric_selector
+        self.optimization_direction = optimization_direction
+        self.early_stopper_patience = early_stopper_patience
+        if early_stopped_trials is None:
+            early_stopped_trials = {}
+        self.early_stopped_trials = early_stopped_trials
         self.cv_mean_metrics_of_interest = cv_mean_metrics_of_interest
         self.tuning_ranges = tuning_ranges
         self.hyperparameter_sampler = hyperparameter_sampler
@@ -302,6 +313,11 @@ class HyperParameterTuner:
                 summary_writer=SummaryWriter(str(summary_writer_path)),
                 trial_number=trial.number,
             ),
+            early_stopper=EarlyStopper(
+                performance_metric=self.performance_metric,
+                patience=self.early_stopper_patience,
+                optimize_direction=self.optimization_direction
+            ),
         )
 
     def objective_fn(self, trial) -> float | None:
@@ -333,6 +349,15 @@ class HyperParameterTuner:
                 trial=trial,
             )
 
+            if objective_tools.early_stopper.indicates_early_stop(
+                result=mean_validation_vals
+            ):
+                self.early_stopped_trials[trial.number] = (
+                    cv_epoch + 1
+                ) * self.epochs_per_fold
+                print(f"Trial {trial.number} stopped early.")
+                break
+
         if self.save_trial_info:
             self.export_trial_info(
                 trial=trial,
@@ -340,12 +365,21 @@ class HyperParameterTuner:
                 cv_means_log=objective_tools.cv_means_log,
             )
 
-        return self.performance_metric_selector(
-            [
+        return PerformanceSelector(
+            optimize_direction=self.optimization_direction
+        ).choose_best_val(
+            values=[
                 getattr(item.result, self.performance_metric)
                 for item in objective_tools.cv_means_log.data
             ]
         )
+
+        # return self.performance_metric_selector(
+        #     [
+        #         getattr(item.result, self.performance_metric)
+        #         for item in objective_tools.cv_means_log.data
+        #     ]
+        # )
 
     def export_study(self, study: optuna.Study):
         if not self.tuner_checkpoint_dir.exists():

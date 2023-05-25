@@ -3,6 +3,7 @@ import optuna
 import torch
 from abc import ABC
 from dataclasses import dataclass
+from enum import Enum, auto
 
 
 @dataclass
@@ -140,3 +141,8 @@ class CVTrialSummary:
     trial: optuna.Trial
     cv_means_log: EvalLog
     trainer_logs: list[TrainEvalLogPair]
+
+
+class OptimizeDirection(Enum):
+    MIN = auto()
+    MAX = auto()
