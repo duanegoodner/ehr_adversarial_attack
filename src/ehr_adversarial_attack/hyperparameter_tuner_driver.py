@@ -1,5 +1,6 @@
 import time
 import torch
+from optuna.pruners import MedianPruner
 from x19_mort_general_dataset import x19m_collate_fn, X19MGeneralDataset
 from hyperparameter_tuner import (
     HyperParameterTuner,
@@ -29,14 +30,14 @@ def main():
         device=cur_device,
         dataset=X19MGeneralDataset.from_feaure_finalizer_output(),
         collate_fn=x19m_collate_fn,
-        num_folds=2,
-        num_cv_epochs=10,
-        # num_trials=30,
-        epochs_per_fold=1,
+        num_folds=5,
+        num_cv_epochs=20,
+        epochs_per_fold=5,
         tuning_ranges=my_tuning_ranges,
+        pruner=MedianPruner(n_startup_trials=5, n_warmup_steps=3)
     )
 
-    completed_study = tuner.tune(num_trials=20)
+    completed_study = tuner.tune(num_trials=30)
 
     return tuner, completed_study
 

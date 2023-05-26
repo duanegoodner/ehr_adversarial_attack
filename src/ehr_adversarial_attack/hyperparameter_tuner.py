@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from dataclasses import dataclass
 from datetime import datetime
-from early_stopping import EarlyStopper, PerformanceSelector
+from early_stopping import PerformanceSelector
 from optuna.pruners import BasePruner, MedianPruner
 from optuna.samplers import BaseSampler, TPESampler
 from optuna.trial import TrialState
@@ -93,7 +93,6 @@ class ObjectiveFunctionTools:
     summary_writer: SummaryWriter
     cv_means_log: EvalLog
     trainers: list[StandardModelTrainer]
-    early_stopper: EarlyStopper
 
 
 class HyperParameterTuner:
@@ -117,8 +116,6 @@ class HyperParameterTuner:
         pruner: BasePruner = MedianPruner(
             n_startup_trials=2, n_warmup_steps=5
         ),
-        early_stopper_patience: int = 1,
-        early_stopped_trials: dict[int, int] = None,
         hyperparameter_sampler: BaseSampler = TPESampler(),
         output_dir: Path = None,
         save_trial_info: bool = True,
@@ -145,10 +142,6 @@ class HyperParameterTuner:
             else "maximize"
         )
         self.pruner = pruner
-        self.early_stopper_patience = early_stopper_patience
-        if early_stopped_trials is None:
-            early_stopped_trials = {}
-        self.early_stopped_trials = early_stopped_trials
         self.cv_mean_metrics_of_interest = cv_mean_metrics_of_interest
         self.tuning_ranges = tuning_ranges
         self.hyperparameter_sampler = hyperparameter_sampler
@@ -321,11 +314,6 @@ class HyperParameterTuner:
                 summary_writer=SummaryWriter(str(summary_writer_path)),
                 trial_number=trial.number,
             ),
-            early_stopper=EarlyStopper(
-                performance_metric=self.performance_metric,
-                patience=self.early_stopper_patience,
-                optimize_direction=self.optimization_direction,
-            ),
         )
 
     def objective_fn(self, trial) -> float | None:
@@ -365,15 +353,6 @@ class HyperParameterTuner:
 
             if trial.should_prune():
                 raise optuna.exceptions.TrialPruned()
-
-            # if objective_tools.early_stopper.indicates_early_stop(
-            #     result=mean_validation_vals
-            # ):
-            #     self.early_stopped_trials[trial.number] = (
-            #         cv_epoch + 1
-            #     ) * self.epochs_per_fold
-            #     print(f"Trial {trial.number} stopped early.")
-            #     break
 
         if self.save_trial_info:
             self.export_trial_info(
@@ -424,7 +403,7 @@ class HyperParameterTuner:
         study = optuna.create_study(
             direction=self.optimization_direction_label,
             sampler=self.hyperparameter_sampler,
-            pruner=self.pruner
+            pruner=self.pruner,
         )
         for trial_num in range(num_trials):
             study.optimize(func=self.objective_fn, n_trials=1, timeout=timeout)
