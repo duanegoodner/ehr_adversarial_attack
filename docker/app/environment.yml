@@ -23,6 +23,7 @@ dependencies:
   - pip:
     - git+https://github.com/duanegoodner/pygetfacl@0.0.5
     - jupyter
+    - optuna
     - pyhealth
     - tensorboard
     - torch

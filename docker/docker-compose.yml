@@ -8,7 +8,7 @@ services:
   ehr_aa_app:
     env_file:
       - .env
-    image: duanegoodner/dev_envs:ehr_aa_app
+    image: ehr_aa_app
     deploy:
       resources:
         reservations:
@@ -37,7 +37,7 @@ services:
       - postgres_mimiciii
 
   postgres_mimiciii:
-    image: duanegoodner/postgres_mimiciii
+    image: postgres_mimiciii
     environment:
       - MIMIC_PASSWORD=mimic
       - BUILD_MIMIC=1
